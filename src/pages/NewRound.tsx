@@ -5,15 +5,18 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { getCurrentPosition, findNearbyCourses, type NearbyPlace } from '../lib/gps'
 import { isOnline, queueOfflineAction } from '../lib/offline'
-import type { Course } from '../types/database'
+import type { Course, PlayMode, NineSide, HoleCount } from '../types/database'
 import { PATRIOT_GOLF_CLUB } from '../lib/patriot-course'
 
 const DEFAULT_PARS = PATRIOT_GOLF_CLUB.hole_pars
 
+const LEAGUE_ID_NIGHT_OPTIONS = ['PGC.Thursday', 'PGC.Test'] as const
+const TEAM_NAME_OPTIONS = ['Wisconsin Knights', 'Test'] as const
+
 export default function NewRound() {
   const { user } = useAuth()
   const navigate = useNavigate()
-  const [step, setStep] = useState<'course' | 'scores'>('course')
+  const [step, setStep] = useState<'course' | 'setup' | 'scores'>('course')
   const [courses, setCourses] = useState<Course[]>([])
   const [nearbyCourses, setNearbyCourses] = useState<NearbyPlace[]>([])
   const [gpsLoading, setGpsLoading] = useState(false)
@@ -29,6 +32,11 @@ export default function NewRound() {
   const [showAddCourse, setShowAddCourse] = useState(false)
   const [newCourseName, setNewCourseName] = useState('')
   const [newCoursePar, setNewCoursePar] = useState(72)
+  const [playMode, setPlayMode] = useState<PlayMode>('non_league')
+  const [leagueIdNight, setLeagueIdNight] = useState<string>('')
+  const [teamName, setTeamName] = useState<string>('')
+  const [holeCount, setHoleCount] = useState<HoleCount>(18)
+  const [nineSide, setNineSide] = useState<NineSide | ''>('')
 
   useEffect(() => {
     loadCourses()
@@ -101,14 +109,35 @@ export default function NewRound() {
     })
   }
 
+  function getHoleRange(): [number, number] {
+    if (holeCount === 18) return [0, 18]
+    if (nineSide === 'back') return [9, 18]
+    return [0, 9] // front (also the fallback for a not-yet-selected 9-hole round)
+  }
+
+  function isSetupValid(): boolean {
+    if (playMode === 'league') {
+      return leagueIdNight !== '' && teamName !== '' && nineSide !== ''
+    }
+    // non-league
+    if (holeCount === 9) return nineSide !== ''
+    return true
+  }
+
   async function saveRound() {
     if (!user || !selectedCourse) return
     setSaving(true)
 
-    const totalScore = scores.reduce((a, b) => a + b, 0)
-    const totalPutts = putts.some((p) => p !== null) ? putts.reduce((a: number, p) => a + (p ?? 0), 0) : null
-    const fwHit = fairways.some((f) => f !== null) ? fairways.filter((f) => f === true).length : null
-    const girCount = girs.some((g) => g !== null) ? girs.filter((g) => g === true).length : null
+    const [start, end] = getHoleRange()
+    const playedScores = scores.slice(start, end)
+    const playedPutts = putts.slice(start, end)
+    const playedFairways = fairways.slice(start, end)
+    const playedGirs = girs.slice(start, end)
+
+    const totalScore = playedScores.reduce((a, b) => a + b, 0)
+    const totalPutts = playedPutts.some((p) => p !== null) ? playedPutts.reduce((a: number, p) => a + (p ?? 0), 0) : null
+    const fwHit = playedFairways.some((f) => f !== null) ? playedFairways.filter((f) => f === true).length : null
+    const girCount = playedGirs.some((g) => g !== null) ? playedGirs.filter((g) => g === true).length : null
 
     const roundData = {
       user_id: user.id,
@@ -120,6 +149,11 @@ export default function NewRound() {
       greens_in_regulation: girCount,
       notes: notes || null,
       is_locked: false,
+      play_mode: playMode,
+      league_id_night: playMode === 'league' ? leagueIdNight : null,
+      team_name: playMode === 'league' ? teamName : null,
+      nine_side: holeCount === 9 ? (nineSide || null) : null,
+      hole_count: holeCount,
     }
 
     if (!isOnline()) {
@@ -143,7 +177,7 @@ export default function NewRound() {
       putts: putts[i],
       fairway_hit: fairways[i],
       gir: girs[i],
-    })).filter((h) => h.strokes > 0)
+    })).filter((h, i) => h.strokes > 0 && i >= start && i < end)
 
     if (holeScores.length > 0) {
       await supabase.from('hole_scores').insert(holeScores)
@@ -266,8 +300,140 @@ export default function NewRound() {
         )}
 
         <button
-          onClick={() => setStep('scores')}
+          onClick={() => setStep('setup')}
           disabled={!selectedCourse}
+          className="w-full bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white font-semibold py-3 rounded-xl transition"
+        >
+          Continue
+        </button>
+      </div>
+    )
+  }
+
+  // Setup step: play mode, league fields, hole count, nine side
+  if (step === 'setup') {
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-6 space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white">{selectedCourse?.name}</h2>
+            <p className="text-sm text-gray-500">Par {selectedCourse?.par} &middot; {date}</p>
+          </div>
+          <button onClick={() => setStep('course')} className="text-sm text-green-700 dark:text-green-400">
+            Change
+          </button>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Play Mode</label>
+          <select
+            value={playMode}
+            onChange={(e) => {
+              const mode = e.target.value as PlayMode
+              setPlayMode(mode)
+              if (mode === 'league') {
+                setHoleCount(9)
+              } else {
+                setHoleCount(18)
+                setLeagueIdNight('')
+                setTeamName('')
+                setNineSide('')
+              }
+            }}
+            className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+          >
+            <option value="non_league">Non-League</option>
+            <option value="league">League</option>
+          </select>
+        </div>
+
+        {playMode === 'league' && (
+          <>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">League ID.Night</label>
+              <select
+                value={leagueIdNight}
+                onChange={(e) => setLeagueIdNight(e.target.value)}
+                className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+              >
+                <option value="">Select...</option>
+                {LEAGUE_ID_NIGHT_OPTIONS.map((v) => (
+                  <option key={v} value={v}>{v}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Team Name</label>
+              <select
+                value={teamName}
+                onChange={(e) => setTeamName(e.target.value)}
+                className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+              >
+                <option value="">Select...</option>
+                {TEAM_NAME_OPTIONS.map((v) => (
+                  <option key={v} value={v}>{v}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-900 rounded-xl px-4 py-3 text-sm text-green-800 dark:text-green-300">
+              9 Holes (automatic for League play)
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nine</label>
+              <select
+                value={nineSide}
+                onChange={(e) => setNineSide(e.target.value as NineSide | '')}
+                className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+              >
+                <option value="">Select...</option>
+                <option value="front">Front (Holes 1-9)</option>
+                <option value="back">Back (Holes 10-18)</option>
+              </select>
+            </div>
+          </>
+        )}
+
+        {playMode === 'non_league' && (
+          <>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Holes</label>
+              <select
+                value={holeCount}
+                onChange={(e) => {
+                  const hc = Number(e.target.value) as HoleCount
+                  setHoleCount(hc)
+                  if (hc === 18) setNineSide('')
+                }}
+                className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+              >
+                <option value={18}>18 Holes</option>
+                <option value={9}>9 Holes</option>
+              </select>
+            </div>
+
+            {holeCount === 9 && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nine</label>
+                <select
+                  value={nineSide}
+                  onChange={(e) => setNineSide(e.target.value as NineSide | '')}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                >
+                  <option value="">Select...</option>
+                  <option value="front">Front (Holes 1-9)</option>
+                  <option value="back">Back (Holes 10-18)</option>
+                </select>
+              </div>
+            )}
+          </>
+        )}
+
+        <button
+          onClick={() => setStep('scores')}
+          disabled={!isSetupValid()}
           className="w-full bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white font-semibold py-3 rounded-xl transition"
         >
           Continue to Scores
@@ -277,6 +443,10 @@ export default function NewRound() {
   }
 
   // Score entry step
+  const [holeStart, holeEnd] = getHoleRange()
+  const showFront = holeStart === 0
+  const showBack = holeEnd === 18
+  const playedScoresHaveValue = scores.slice(holeStart, holeEnd).some((s) => s > 0)
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 space-y-4">
       <div className="flex items-center justify-between">
@@ -284,48 +454,50 @@ export default function NewRound() {
           <h2 className="text-xl font-bold text-gray-900 dark:text-white">{selectedCourse?.name}</h2>
           <p className="text-sm text-gray-500">Par {selectedCourse?.par} &middot; {date}</p>
         </div>
-        <button onClick={() => setStep('course')} className="text-sm text-green-700 dark:text-green-400">
+        <button onClick={() => setStep('setup')} className="text-sm text-green-700 dark:text-green-400">
           Change
         </button>
       </div>
 
-      {/* Front 9 */}
-      <ScoreSection
-        title="Front 9"
-        holeStart={0}
-        holeEnd={9}
-        holePars={holePars}
-        scores={scores}
-        putts={putts}
-        fairways={fairways}
-        girs={girs}
-        onScoreChange={updateScore}
-        onPuttsChange={updatePutts}
-        onFairwayChange={(h, v) => setFairways((p) => { const n = [...p]; n[h] = v; return n })}
-        onGirChange={(h, v) => setGirs((p) => { const n = [...p]; n[h] = v; return n })}
-      />
+      {showFront && (
+        <ScoreSection
+          title="Front 9"
+          holeStart={0}
+          holeEnd={9}
+          holePars={holePars}
+          scores={scores}
+          putts={putts}
+          fairways={fairways}
+          girs={girs}
+          onScoreChange={updateScore}
+          onPuttsChange={updatePutts}
+          onFairwayChange={(h, v) => setFairways((p) => { const n = [...p]; n[h] = v; return n })}
+          onGirChange={(h, v) => setGirs((p) => { const n = [...p]; n[h] = v; return n })}
+        />
+      )}
 
-      {/* Back 9 */}
-      <ScoreSection
-        title="Back 9"
-        holeStart={9}
-        holeEnd={18}
-        holePars={holePars}
-        scores={scores}
-        putts={putts}
-        fairways={fairways}
-        girs={girs}
-        onScoreChange={updateScore}
-        onPuttsChange={updatePutts}
-        onFairwayChange={(h, v) => setFairways((p) => { const n = [...p]; n[h] = v; return n })}
-        onGirChange={(h, v) => setGirs((p) => { const n = [...p]; n[h] = v; return n })}
-      />
+      {showBack && (
+        <ScoreSection
+          title="Back 9"
+          holeStart={9}
+          holeEnd={18}
+          holePars={holePars}
+          scores={scores}
+          putts={putts}
+          fairways={fairways}
+          girs={girs}
+          onScoreChange={updateScore}
+          onPuttsChange={updatePutts}
+          onFairwayChange={(h, v) => setFairways((p) => { const n = [...p]; n[h] = v; return n })}
+          onGirChange={(h, v) => setGirs((p) => { const n = [...p]; n[h] = v; return n })}
+        />
+      )}
 
       {/* Total */}
       <div className="bg-green-50 dark:bg-green-950 rounded-xl p-4 flex justify-between items-center">
         <span className="font-semibold text-green-800 dark:text-green-300">Total Score</span>
         <span className="text-2xl font-bold text-green-700 dark:text-green-400">
-          {scores.reduce((a, b) => a + b, 0) || '--'}
+          {scores.slice(holeStart, holeEnd).reduce((a, b) => a + b, 0) || '--'}
         </span>
       </div>
 
@@ -340,7 +512,7 @@ export default function NewRound() {
 
       <button
         onClick={saveRound}
-        disabled={saving || scores.every((s) => s === 0)}
+        disabled={saving || !playedScoresHaveValue}
         className="w-full bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white font-bold py-3 rounded-xl transition"
       >
         {saving ? 'Saving...' : 'Save Round'}
