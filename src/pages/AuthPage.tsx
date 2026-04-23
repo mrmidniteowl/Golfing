@@ -4,13 +4,13 @@ import { isSupabaseConfigured as isConfigured } from '../lib/supabase'
 
 function AuthBackground({ children }: { children: ReactNode }) {
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
+    <div className="min-h-screen flex items-start justify-center px-4 pt-8 pb-4 relative overflow-hidden">
       <div
         className="absolute inset-0 bg-cover bg-center"
         style={{ backgroundImage: `url('${import.meta.env.BASE_URL}auth-bg.png')` }}
       />
-      <div className="absolute inset-0 bg-green-50/70 dark:bg-gray-950/80" />
-      <div className="relative z-10 w-full flex items-center justify-center">
+      <div className="absolute inset-0 bg-green-50/50 dark:bg-gray-950/60" />
+      <div className="relative z-10 w-full flex items-start justify-center">
         {children}
       </div>
     </div>
