@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { BarChart3, Target } from 'lucide-react'
+import { useEffect, useRef, useState, type ChangeEvent } from 'react'
+import { BarChart3, Camera, Target } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell } from 'recharts'
 import { format } from 'date-fns'
 import { supabase } from '../lib/supabase'
@@ -8,12 +8,14 @@ import { calculateHandicap, getHandicapDisplay } from '../lib/handicap'
 import type { Round, Course } from '../types/database'
 
 export default function ProfilePage() {
-  const { user, profile, updateProfile } = useAuth()
+  const { user, profile, updateProfile, isDemo } = useAuth()
   const [rounds, setRounds] = useState<Round[]>([])
   const [courses, setCourses] = useState<Map<string, Course>>(new Map())
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState(false)
   const [name, setName] = useState(profile?.full_name ?? '')
+  const [uploading, setUploading] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (!user) return
@@ -45,6 +47,35 @@ export default function ProfilePage() {
   async function saveName() {
     await updateProfile({ full_name: name })
     setEditing(false)
+  }
+
+  async function handleAvatarUpload(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file || !user) return
+    if (isDemo) {
+      alert('Profile photos are disabled in demo mode. Sign up to save a real photo.')
+      if (fileInputRef.current) fileInputRef.current.value = ''
+      return
+    }
+
+    setUploading(true)
+    try {
+      const ext = (file.name.split('.').pop() || 'jpg').toLowerCase()
+      const path = `${user.id}/${Date.now()}.${ext}`
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(path, file, { upsert: true, contentType: file.type })
+      if (uploadError) throw uploadError
+
+      const { data } = supabase.storage.from('avatars').getPublicUrl(path)
+      await updateProfile({ avatar_url: data.publicUrl })
+    } catch (err) {
+      console.error('Avatar upload failed:', err)
+      alert('Failed to upload photo. Please try again.')
+    } finally {
+      setUploading(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
   }
 
   const coursePars = new Map<string, number>()
@@ -100,10 +131,36 @@ export default function ProfilePage() {
     <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
       {/* Profile header */}
       <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 shadow-sm text-center">
-        <div className="w-20 h-20 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center mx-auto mb-3">
-          <span className="text-3xl font-bold text-green-700 dark:text-green-400">
-            {(profile?.full_name ?? '?')[0].toUpperCase()}
-          </span>
+        <div className="relative w-20 h-20 mx-auto mb-3">
+          {profile?.avatar_url ? (
+            <img
+              src={profile.avatar_url}
+              alt="Profile"
+              className="w-20 h-20 rounded-full object-cover"
+            />
+          ) : (
+            <div className="w-20 h-20 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center">
+              <span className="text-3xl font-bold text-green-700 dark:text-green-400">
+                {(profile?.full_name ?? '?')[0].toUpperCase()}
+              </span>
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+            aria-label="Change profile photo"
+            className="absolute bottom-0 right-0 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white rounded-full p-1.5 shadow-md"
+          >
+            <Camera size={14} />
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleAvatarUpload}
+            className="hidden"
+          />
         </div>
         {editing ? (
           <div className="flex items-center gap-2 justify-center">
