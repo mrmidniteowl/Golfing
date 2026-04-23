@@ -25,7 +25,6 @@ export default function AuthPage() {
   const [fullName, setFullName] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const [signUpSuccess, setSignUpSuccess] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -34,7 +33,8 @@ export default function AuthPage() {
     if (isSignUp) {
       const { error: err } = await signUp(email, password, fullName)
       if (err) setError(err)
-      else setSignUpSuccess(true)
+      // On success the auth-state listener in AuthProvider picks up the new
+      // session and this component unmounts — no intermediate screen needed.
     } else {
       const { error: err } = await signIn(email, password)
       if (err) setError(err)
@@ -45,26 +45,6 @@ export default function AuthPage() {
   const handleDemo = () => {
     localStorage.setItem('golf_demo_mode', 'true')
     window.location.reload()
-  }
-
-  if (signUpSuccess) {
-    return (
-      <AuthBackground>
-        <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-lg p-8 max-w-md w-full text-center">
-          <div className="text-5xl mb-4">&#9989;</div>
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Check Your Email</h2>
-          <p className="text-gray-600 dark:text-gray-400 mb-4">
-            We sent a confirmation link to <strong>{email}</strong>. Click it to activate your account.
-          </p>
-          <button
-            onClick={() => { setSignUpSuccess(false); setIsSignUp(false) }}
-            className="text-green-700 dark:text-green-400 font-semibold"
-          >
-            Back to Sign In
-          </button>
-        </div>
-      </AuthBackground>
-    )
   }
 
   return (
