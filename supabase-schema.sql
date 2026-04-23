@@ -1,5 +1,5 @@
 -- =============================================
--- GolfTracker Database Schema for Supabase
+-- Golfing with the Boyz Database Schema for Supabase
 -- =============================================
 -- Run this in your Supabase SQL Editor:
 -- https://supabase.com/dashboard/project/YOUR_PROJECT/sql
