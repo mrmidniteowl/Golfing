@@ -3,6 +3,7 @@ import { Trophy, Medal } from 'lucide-react'
 import { supabase, isSupabaseConfigured } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { calculateHandicap, getHandicapDisplay, adjustedScore } from '../lib/handicap'
+import { PlayModeFilter, filterByMode, type PlayModeFilterValue } from '../components/PlayModeFilter'
 import { ALL_DEMO_ROUNDS, DEMO_PROFILES, DEMO_COURSES } from '../lib/demo-data'
 import type { Round, Profile, Course } from '../types/database'
 
@@ -20,10 +21,13 @@ type SortMode = 'handicap' | 'average' | 'latest'
 
 export default function Leaderboard() {
   const { isDemo } = useAuth()
-  const [players, setPlayers] = useState<PlayerStats[]>([])
+  const [profiles, setProfiles] = useState<Profile[]>([])
+  const [allRounds, setAllRounds] = useState<Round[]>([])
+  const [courseMap, setCourseMap] = useState<Map<string, Course>>(new Map())
   const [loading, setLoading] = useState(true)
   const [sortMode, setSortMode] = useState<SortMode>('handicap')
   const [tab, setTab] = useState<'weekly' | 'season'>('weekly')
+  const [mode, setMode] = useState<PlayModeFilterValue>('all')
 
   useEffect(() => {
     if (isDemo) {
@@ -36,10 +40,11 @@ export default function Leaderboard() {
   }, [isDemo])
 
   function loadDemoLeaderboard() {
-    const coursePars = new Map<string, number>()
-    DEMO_COURSES.forEach((c) => coursePars.set(c.id, c.par))
-    const stats = buildStats(DEMO_PROFILES, ALL_DEMO_ROUNDS, coursePars)
-    setPlayers(stats)
+    const cm = new Map<string, Course>()
+    DEMO_COURSES.forEach((c) => cm.set(c.id, c))
+    setProfiles(DEMO_PROFILES)
+    setAllRounds(ALL_DEMO_ROUNDS)
+    setCourseMap(cm)
     setLoading(false)
   }
 
@@ -50,22 +55,19 @@ export default function Leaderboard() {
       supabase.from('courses').select('*'),
     ])
 
-    const profiles = (profilesRes.data ?? []) as Profile[]
-    const rounds = (roundsRes.data ?? []) as Round[]
-    const courseMap = new Map<string, Course>()
-    ;(coursesRes.data ?? []).forEach((c) => courseMap.set((c as Course).id, c as Course))
-    const coursePars = new Map<string, number>()
-    courseMap.forEach((c, id) => coursePars.set(id, c.par))
+    const cm = new Map<string, Course>()
+    ;(coursesRes.data ?? []).forEach((c) => cm.set((c as Course).id, c as Course))
 
-    const stats = buildStats(profiles, rounds, coursePars)
-    setPlayers(stats)
+    setProfiles((profilesRes.data ?? []) as Profile[])
+    setAllRounds((roundsRes.data ?? []) as Round[])
+    setCourseMap(cm)
     setLoading(false)
   }
 
-  function buildStats(profiles: Profile[], rounds: Round[], coursePars: Map<string, number>): PlayerStats[] {
+  function buildStats(profiles: Profile[], rounds: Round[], courses: Map<string, Course>): PlayerStats[] {
     return profiles.map((profile) => {
       const playerRounds = rounds.filter((r) => r.user_id === profile.id)
-      const handicap = calculateHandicap(playerRounds, coursePars)
+      const handicap = calculateHandicap(playerRounds, courses)
       const avgScore = playerRounds.length > 0
         ? Math.round(playerRounds.reduce((s, r) => s + r.total_score, 0) / playerRounds.length * 10) / 10
         : null
@@ -78,6 +80,8 @@ export default function Leaderboard() {
       return { profile, rounds: playerRounds, handicap, avgScore, bestScore, latestScore, adjustedLatest }
     }).filter((p) => p.rounds.length > 0)
   }
+
+  const players = buildStats(profiles, filterByMode(allRounds, mode), courseMap)
 
   function getSorted() {
     const copy = [...players]
@@ -106,9 +110,12 @@ export default function Leaderboard() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 space-y-4">
-      <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-        <Trophy size={24} className="text-yellow-500" /> Leaderboard
-      </h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+          <Trophy size={24} className="text-yellow-500" /> Leaderboard
+        </h2>
+        <PlayModeFilter value={mode} onChange={setMode} />
+      </div>
 
       {/* Tabs */}
       <div className="flex gap-2">

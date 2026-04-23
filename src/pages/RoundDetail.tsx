@@ -4,6 +4,7 @@ import { ArrowLeft, Trash2, Share2 } from 'lucide-react'
 import { format } from 'date-fns'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
+import { getRoundPar } from '../lib/handicap'
 import type { Round, HoleScore } from '../types/database'
 
 export default function RoundDetail() {
@@ -66,6 +67,18 @@ export default function RoundDetail() {
         <div className="flex-1">
           <h2 className="text-xl font-bold text-gray-900 dark:text-white">{round.course?.name}</h2>
           <p className="text-sm text-gray-500">{format(new Date(round.date), 'EEEE, MMMM d, yyyy')}</p>
+          <div className="flex flex-wrap gap-1 mt-1">
+            {round.play_mode === 'league' && (
+              <span className="text-xs bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 px-2 py-0.5 rounded-full">
+                League &middot; {round.league_id_night} &middot; {round.team_name}
+              </span>
+            )}
+            <span className="text-xs bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded-full">
+              {round.hole_count === 9
+                ? `9 Holes (${round.nine_side === 'back' ? 'Back' : 'Front'})`
+                : '18 Holes'}
+            </span>
+          </div>
         </div>
         {isOwner && !round.is_locked && (
           <div className="flex gap-2">
@@ -87,9 +100,13 @@ export default function RoundDetail() {
       {/* Summary */}
       <div className="grid grid-cols-4 gap-3">
         <SummaryCard label="Score" value={round.total_score.toString()} />
-        <SummaryCard label="vs Par" value={`${round.total_score - (round.course?.par ?? 72) >= 0 ? '+' : ''}${round.total_score - (round.course?.par ?? 72)}`} />
+        <SummaryCard label="vs Par" value={(() => {
+          const par = getRoundPar(round, round.course)
+          const diff = round.total_score - par
+          return `${diff >= 0 ? '+' : ''}${diff}`
+        })()} />
         <SummaryCard label="Putts" value={round.total_putts?.toString() ?? '--'} />
-        <SummaryCard label="GIR" value={round.greens_in_regulation !== null ? `${round.greens_in_regulation}/18` : '--'} />
+        <SummaryCard label="GIR" value={round.greens_in_regulation !== null ? `${round.greens_in_regulation}/${round.hole_count}` : '--'} />
       </div>
 
       {/* Hole-by-hole */}

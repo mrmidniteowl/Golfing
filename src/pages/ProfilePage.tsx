@@ -5,6 +5,7 @@ import { format } from 'date-fns'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { calculateHandicap, getHandicapDisplay } from '../lib/handicap'
+import { PlayModeFilter, filterByMode, type PlayModeFilterValue } from '../components/PlayModeFilter'
 import type { Round, Course } from '../types/database'
 
 export default function ProfilePage() {
@@ -16,6 +17,7 @@ export default function ProfilePage() {
   const [name, setName] = useState(profile?.full_name ?? '')
   const [uploading, setUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [mode, setMode] = useState<PlayModeFilterValue>('all')
 
   useEffect(() => {
     if (!user) return
@@ -78,25 +80,24 @@ export default function ProfilePage() {
     }
   }
 
-  const coursePars = new Map<string, number>()
-  courses.forEach((c, id) => coursePars.set(id, c.par))
+  const filteredRounds = filterByMode(rounds, mode)
 
-  const handicap = calculateHandicap(rounds, coursePars)
-  const avgScore = rounds.length > 0
-    ? Math.round(rounds.reduce((s, r) => s + r.total_score, 0) / rounds.length * 10) / 10
+  const handicap = calculateHandicap(filteredRounds, courses)
+  const avgScore = filteredRounds.length > 0
+    ? Math.round(filteredRounds.reduce((s, r) => s + r.total_score, 0) / filteredRounds.length * 10) / 10
     : null
-  const avgPutts = rounds.filter((r) => r.total_putts).length > 0
-    ? Math.round(rounds.filter((r) => r.total_putts).reduce((s, r) => s + (r.total_putts ?? 0), 0) / rounds.filter((r) => r.total_putts).length * 10) / 10
+  const avgPutts = filteredRounds.filter((r) => r.total_putts).length > 0
+    ? Math.round(filteredRounds.filter((r) => r.total_putts).reduce((s, r) => s + (r.total_putts ?? 0), 0) / filteredRounds.filter((r) => r.total_putts).length * 10) / 10
     : null
-  const avgGir = rounds.filter((r) => r.greens_in_regulation !== null).length > 0
-    ? Math.round(rounds.filter((r) => r.greens_in_regulation !== null).reduce((s, r) => s + (r.greens_in_regulation ?? 0), 0) / rounds.filter((r) => r.greens_in_regulation !== null).length * 10) / 10
+  const avgGir = filteredRounds.filter((r) => r.greens_in_regulation !== null).length > 0
+    ? Math.round(filteredRounds.filter((r) => r.greens_in_regulation !== null).reduce((s, r) => s + (r.greens_in_regulation ?? 0), 0) / filteredRounds.filter((r) => r.greens_in_regulation !== null).length * 10) / 10
     : null
-  const avgFw = rounds.filter((r) => r.fairways_hit !== null).length > 0
-    ? Math.round(rounds.filter((r) => r.fairways_hit !== null).reduce((s, r) => s + (r.fairways_hit ?? 0), 0) / rounds.filter((r) => r.fairways_hit !== null).length * 10) / 10
+  const avgFw = filteredRounds.filter((r) => r.fairways_hit !== null).length > 0
+    ? Math.round(filteredRounds.filter((r) => r.fairways_hit !== null).reduce((s, r) => s + (r.fairways_hit ?? 0), 0) / filteredRounds.filter((r) => r.fairways_hit !== null).length * 10) / 10
     : null
 
-  // Score distribution for chart
-  const scoreDistribution = rounds.reduce((acc, r) => {
+  // Score distribution for chart (par-relative uses the course par; works across hole counts because we compare to course par either way)
+  const scoreDistribution = filteredRounds.reduce((acc, r) => {
     const par = r.course?.par ?? 72
     const diff = r.total_score - par
     const bucket = diff <= -3 ? '-3+' : diff <= -1 ? '-1 to -2' : diff === 0 ? 'Even' : diff <= 2 ? '+1 to +2' : diff <= 5 ? '+3 to +5' : diff <= 10 ? '+6 to +10' : '11+'
@@ -109,7 +110,7 @@ export default function ProfilePage() {
   const COLORS = ['#16a34a', '#22c55e', '#86efac', '#fbbf24', '#f97316', '#ef4444', '#dc2626']
 
   // Monthly averages
-  const monthlyAvg = rounds.reduce((acc, r) => {
+  const monthlyAvg = filteredRounds.reduce((acc, r) => {
     const month = format(new Date(r.date), 'MMM yyyy')
     if (!acc[month]) acc[month] = { total: 0, count: 0 }
     acc[month].total += r.total_score
@@ -181,11 +182,17 @@ export default function ProfilePage() {
         <p className="text-xs text-gray-400 mt-1 capitalize">{profile?.role}</p>
       </div>
 
+      {/* Mode filter */}
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Stats</span>
+        <PlayModeFilter value={mode} onChange={setMode} />
+      </div>
+
       {/* Quick stats */}
       <div className="grid grid-cols-3 gap-3">
         <MiniStat label="Handicap" value={getHandicapDisplay(handicap)} />
         <MiniStat label="Avg Score" value={avgScore?.toFixed(1) ?? '--'} />
-        <MiniStat label="Rounds" value={rounds.length.toString()} />
+        <MiniStat label="Rounds" value={filteredRounds.length.toString()} />
         <MiniStat label="Avg Putts" value={avgPutts?.toFixed(1) ?? '--'} />
         <MiniStat label="Avg GIR" value={avgGir !== null ? `${avgGir.toFixed(1)}/18` : '--'} />
         <MiniStat label="Avg FW" value={avgFw !== null ? `${avgFw.toFixed(1)}/14` : '--'} />
