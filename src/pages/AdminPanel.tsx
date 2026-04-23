@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Shield, Lock, Unlock, Trash2, Download, Users, Calendar } from 'lucide-react'
+import { Shield, Lock, Unlock, Trash2, Download, Users, Calendar, Pencil, KeyRound } from 'lucide-react'
 import { format } from 'date-fns'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
@@ -13,6 +13,12 @@ export default function AdminPanel() {
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<'players' | 'rounds' | 'reports'>('players')
   const [editingScore, setEditingScore] = useState<{ id: string; score: number } | null>(null)
+  const [editingName, setEditingName] = useState<{ id: string; value: string } | null>(null)
+  const [pwModalUser, setPwModalUser] = useState<Profile | null>(null)
+  const [newPw, setNewPw] = useState('')
+  const [confirmPw, setConfirmPw] = useState('')
+  const [pwError, setPwError] = useState<string | null>(null)
+  const [pwSubmitting, setPwSubmitting] = useState(false)
 
   const isAdmin = currentProfile?.role === 'commissioner' || currentProfile?.role === 'admin'
 
@@ -54,6 +60,51 @@ export default function AdminPanel() {
   async function changeRole(userId: string, newRole: 'player' | 'commissioner') {
     await supabase.from('profiles').update({ role: newRole }).eq('id', userId)
     setPlayers((prev) => prev.map((p) => p.id === userId ? { ...p, role: newRole } : p))
+  }
+
+  async function saveName(userId: string) {
+    if (!editingName) return
+    const trimmed = editingName.value.trim()
+    if (trimmed.length === 0) {
+      setEditingName(null)
+      return
+    }
+    const { error } = await supabase.from('profiles').update({ full_name: trimmed }).eq('id', userId)
+    if (error) {
+      alert('Failed to update name: ' + error.message)
+      return
+    }
+    setPlayers((prev) => prev.map((p) => p.id === userId ? { ...p, full_name: trimmed } : p))
+    setEditingName(null)
+  }
+
+  async function submitPasswordReset() {
+    if (!pwModalUser) return
+    setPwError(null)
+    if (newPw.length < 8) {
+      setPwError('Password must be at least 8 characters.')
+      return
+    }
+    if (newPw !== confirmPw) {
+      setPwError('Passwords do not match.')
+      return
+    }
+
+    setPwSubmitting(true)
+    const { error } = await supabase.functions.invoke('admin-set-password', {
+      body: { targetUserId: pwModalUser.id, newPassword: newPw },
+    })
+    setPwSubmitting(false)
+
+    if (error) {
+      setPwError('Failed to reset password: ' + error.message)
+      return
+    }
+
+    alert(`Password updated for ${pwModalUser.full_name}. Make sure to communicate the new password to them out-of-band.`)
+    setPwModalUser(null)
+    setNewPw('')
+    setConfirmPw('')
   }
 
   function exportCSV() {
@@ -141,10 +192,36 @@ export default function AdminPanel() {
           </div>
           <div className="divide-y divide-gray-100 dark:divide-gray-800">
             {players.map((player) => (
-              <div key={player.id} className="flex items-center px-4 py-3">
-                <div className="flex-1">
-                  <div className="font-medium text-gray-900 dark:text-white text-sm">{player.full_name}</div>
-                  <div className="text-xs text-gray-500">{player.email}</div>
+              <div key={player.id} className="flex items-center px-4 py-3 gap-2">
+                <div className="flex-1 min-w-0">
+                  {editingName?.id === player.id ? (
+                    <div className="flex items-center gap-2">
+                      <input
+                        value={editingName.value}
+                        onChange={(e) => setEditingName({ id: player.id, value: e.target.value })}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') saveName(player.id)
+                          if (e.key === 'Escape') setEditingName(null)
+                        }}
+                        className="flex-1 min-w-0 px-2 py-1 text-sm border rounded dark:bg-gray-800 dark:border-gray-700 dark:text-white"
+                        autoFocus
+                      />
+                      <button onClick={() => saveName(player.id)} className="text-xs text-green-700 dark:text-green-400 font-medium">Save</button>
+                      <button onClick={() => setEditingName(null)} className="text-xs text-gray-400">Cancel</button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-medium text-gray-900 dark:text-white text-sm truncate">{player.full_name}</span>
+                      <button
+                        onClick={() => setEditingName({ id: player.id, value: player.full_name })}
+                        className="p-1 rounded-full text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+                        title="Edit name"
+                      >
+                        <Pencil size={12} />
+                      </button>
+                    </div>
+                  )}
+                  <div className="text-xs text-gray-500 truncate">{player.email}</div>
                 </div>
                 <select
                   value={player.role}
@@ -154,6 +231,13 @@ export default function AdminPanel() {
                   <option value="player">Player</option>
                   <option value="commissioner">Commissioner</option>
                 </select>
+                <button
+                  onClick={() => { setPwModalUser(player); setNewPw(''); setConfirmPw(''); setPwError(null) }}
+                  className="p-1.5 rounded-full text-gray-400 hover:text-green-700 dark:hover:text-green-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+                  title="Reset password"
+                >
+                  <KeyRound size={14} />
+                </button>
               </div>
             ))}
           </div>
@@ -246,6 +330,62 @@ export default function AdminPanel() {
             >
               Share Report
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Password-reset modal */}
+      {pwModalUser && (
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50"
+          onClick={() => !pwSubmitting && setPwModalUser(null)}
+        >
+          <div
+            className="bg-white dark:bg-gray-900 rounded-2xl p-6 max-w-sm w-full shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1">Reset Password</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+              For <span className="font-medium text-gray-700 dark:text-gray-300">{pwModalUser.full_name}</span> ({pwModalUser.email})
+            </p>
+            <input
+              type="password"
+              placeholder="New password (min 8 chars)"
+              value={newPw}
+              onChange={(e) => setNewPw(e.target.value)}
+              className="w-full mb-2 px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm"
+              autoFocus
+            />
+            <input
+              type="password"
+              placeholder="Confirm new password"
+              value={confirmPw}
+              onChange={(e) => setConfirmPw(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && submitPasswordReset()}
+              className="w-full mb-2 px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm"
+            />
+            {pwError && (
+              <p className="text-sm text-red-600 dark:text-red-400 mb-2">{pwError}</p>
+            )}
+            <p className="text-xs text-gray-500 mb-4">
+              You'll need to share the new password with the player yourself (text/phone). They can change it later from their own account.
+            </p>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setPwModalUser(null)}
+                disabled={pwSubmitting}
+                className="px-4 py-2 rounded-lg text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={submitPasswordReset}
+                disabled={pwSubmitting}
+                className="px-4 py-2 rounded-lg bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white text-sm font-medium"
+              >
+                {pwSubmitting ? 'Updating...' : 'Reset Password'}
+              </button>
+            </div>
           </div>
         </div>
       )}
