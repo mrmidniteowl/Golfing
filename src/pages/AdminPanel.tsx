@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Shield, Lock, Unlock, Trash2, Download, Users, Calendar, Pencil, KeyRound } from 'lucide-react'
+import { Shield, Lock, Unlock, Trash2, Download, Users, Calendar, Pencil, KeyRound, UserPlus } from 'lucide-react'
 import { format } from 'date-fns'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
@@ -19,6 +19,12 @@ export default function AdminPanel() {
   const [confirmPw, setConfirmPw] = useState('')
   const [pwError, setPwError] = useState<string | null>(null)
   const [pwSubmitting, setPwSubmitting] = useState(false)
+  const [createModalOpen, setCreateModalOpen] = useState(false)
+  const [newPlayerEmail, setNewPlayerEmail] = useState('')
+  const [newPlayerName, setNewPlayerName] = useState('')
+  const [newPlayerPw, setNewPlayerPw] = useState('')
+  const [createError, setCreateError] = useState<string | null>(null)
+  const [createSubmitting, setCreateSubmitting] = useState(false)
 
   const isAdmin = currentProfile?.role === 'commissioner' || currentProfile?.role === 'admin'
 
@@ -76,6 +82,49 @@ export default function AdminPanel() {
     }
     setPlayers((prev) => prev.map((p) => p.id === userId ? { ...p, full_name: trimmed } : p))
     setEditingName(null)
+  }
+
+  async function submitCreatePlayer() {
+    setCreateError(null)
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newPlayerEmail)) {
+      setCreateError('Please enter a valid email address.')
+      return
+    }
+    if (newPlayerName.trim().length === 0) {
+      setCreateError('Full name is required.')
+      return
+    }
+    if (newPlayerPw.length < 8) {
+      setCreateError('Password must be at least 8 characters.')
+      return
+    }
+
+    setCreateSubmitting(true)
+    const { data, error } = await supabase.functions.invoke('admin-create-user', {
+      body: {
+        email: newPlayerEmail.trim(),
+        password: newPlayerPw,
+        fullName: newPlayerName.trim(),
+      },
+    })
+    setCreateSubmitting(false)
+
+    if (error) {
+      setCreateError('Failed to create player: ' + error.message)
+      return
+    }
+    if (data && typeof data === 'object' && 'error' in data) {
+      setCreateError(String((data as { error: string }).error))
+      return
+    }
+
+    alert(`Player ${newPlayerName} created. Email: ${newPlayerEmail}, password: ${newPlayerPw}. Send those credentials to them out-of-band.`)
+    setCreateModalOpen(false)
+    setNewPlayerEmail('')
+    setNewPlayerName('')
+    setNewPlayerPw('')
+    // Refresh player list to show the newcomer
+    loadData()
   }
 
   async function submitPasswordReset() {
@@ -189,6 +238,19 @@ export default function AdminPanel() {
           <div className="px-4 py-3 bg-gray-50 dark:bg-gray-800 flex items-center gap-2">
             <Users size={16} className="text-gray-500" />
             <span className="font-semibold text-sm text-gray-700 dark:text-gray-300">{players.length} Players</span>
+            <button
+              onClick={() => {
+                setCreateModalOpen(true)
+                setNewPlayerEmail('')
+                setNewPlayerName('')
+                setNewPlayerPw('')
+                setCreateError(null)
+              }}
+              className="ml-auto flex items-center gap-1 text-xs font-medium text-green-700 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300"
+            >
+              <UserPlus size={14} />
+              New Player
+            </button>
           </div>
           <div className="divide-y divide-gray-100 dark:divide-gray-800">
             {players.map((player) => (
@@ -330,6 +392,69 @@ export default function AdminPanel() {
             >
               Share Report
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* New-player modal */}
+      {createModalOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50"
+          onClick={() => !createSubmitting && setCreateModalOpen(false)}
+        >
+          <div
+            className="bg-white dark:bg-gray-900 rounded-2xl p-6 max-w-sm w-full shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1">New Player</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+              Create an account for a buddy. They'll be able to log in immediately with the email + password you set.
+            </p>
+            <input
+              type="text"
+              placeholder="Full name"
+              value={newPlayerName}
+              onChange={(e) => setNewPlayerName(e.target.value)}
+              className="w-full mb-2 px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm"
+              autoFocus
+            />
+            <input
+              type="email"
+              placeholder="Email"
+              value={newPlayerEmail}
+              onChange={(e) => setNewPlayerEmail(e.target.value)}
+              className="w-full mb-2 px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm"
+            />
+            <input
+              type="text"
+              placeholder="Initial password (min 8 chars)"
+              value={newPlayerPw}
+              onChange={(e) => setNewPlayerPw(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && submitCreatePlayer()}
+              className="w-full mb-2 px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm"
+            />
+            {createError && (
+              <p className="text-sm text-red-600 dark:text-red-400 mb-2">{createError}</p>
+            )}
+            <p className="text-xs text-gray-500 mb-4">
+              Password is shown in plaintext on purpose so you can copy it to send to the player.
+            </p>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setCreateModalOpen(false)}
+                disabled={createSubmitting}
+                className="px-4 py-2 rounded-lg text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={submitCreatePlayer}
+                disabled={createSubmitting}
+                className="px-4 py-2 rounded-lg bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white text-sm font-medium"
+              >
+                {createSubmitting ? 'Creating...' : 'Create Player'}
+              </button>
+            </div>
           </div>
         </div>
       )}
