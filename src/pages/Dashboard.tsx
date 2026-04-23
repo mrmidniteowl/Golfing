@@ -6,6 +6,7 @@ import { format } from 'date-fns'
 import { supabase, isSupabaseConfigured } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { calculateHandicap, getHandicapDisplay } from '../lib/handicap'
+import { PlayModeFilter, filterByMode, type PlayModeFilterValue } from '../components/PlayModeFilter'
 import { DEMO_ROUNDS, DEMO_COURSES } from '../lib/demo-data'
 import type { Round, Course } from '../types/database'
 
@@ -14,6 +15,7 @@ export default function Dashboard() {
   const [rounds, setRounds] = useState<Round[]>([])
   const [courses, setCourses] = useState<Map<string, Course>>(new Map())
   const [loading, setLoading] = useState(true)
+  const [mode, setMode] = useState<PlayModeFilterValue>('all')
 
   useEffect(() => {
     if (!user) return
@@ -50,17 +52,15 @@ export default function Dashboard() {
     setLoading(false)
   }
 
-  const coursePars = new Map<string, number>()
-  courses.forEach((c, id) => coursePars.set(id, c.par))
-
-  const handicap = calculateHandicap(rounds, coursePars)
-  const avgScore = rounds.length > 0
-    ? Math.round(rounds.reduce((s, r) => s + r.total_score, 0) / rounds.length * 10) / 10
+  const filteredRounds = filterByMode(rounds, mode)
+  const handicap = calculateHandicap(filteredRounds, courses)
+  const avgScore = filteredRounds.length > 0
+    ? Math.round(filteredRounds.reduce((s, r) => s + r.total_score, 0) / filteredRounds.length * 10) / 10
     : null
-  const bestScore = rounds.length > 0 ? Math.min(...rounds.map((r) => r.total_score)) : null
-  const totalRounds = rounds.length
+  const bestScore = filteredRounds.length > 0 ? Math.min(...filteredRounds.map((r) => r.total_score)) : null
+  const totalRounds = filteredRounds.length
 
-  const chartData = [...rounds]
+  const chartData = [...filteredRounds]
     .reverse()
     .slice(-20)
     .map((r) => ({
@@ -95,6 +95,12 @@ export default function Dashboard() {
           <div className="text-green-100 text-sm">Track your scores hole-by-hole</div>
         </div>
       </Link>
+
+      {/* Mode filter */}
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Stats</span>
+        <PlayModeFilter value={mode} onChange={setMode} />
+      </div>
 
       {/* Stats cards */}
       <div className="grid grid-cols-2 gap-3">
@@ -135,11 +141,11 @@ export default function Dashboard() {
       {/* Recent rounds */}
       <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm">
         <h3 className="font-semibold text-gray-800 dark:text-gray-200 px-4 pt-4 pb-2">Recent Rounds</h3>
-        {rounds.length === 0 ? (
+        {filteredRounds.length === 0 ? (
           <p className="text-gray-500 px-4 pb-4 text-sm">No rounds yet. Enter your first round!</p>
         ) : (
           <div className="divide-y divide-gray-100 dark:divide-gray-800">
-            {rounds.slice(0, 10).map((round) => (
+            {filteredRounds.slice(0, 10).map((round) => (
               <Link
                 key={round.id}
                 to={`/round/${round.id}`}
