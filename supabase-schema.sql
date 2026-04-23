@@ -76,7 +76,23 @@ create table public.rounds (
   greens_in_regulation integer,
   notes text,
   is_locked boolean not null default false,
-  created_at timestamptz not null default now()
+  play_mode text not null default 'non_league' check (play_mode in ('league', 'non_league')),
+  league_id_night text,
+  team_name text,
+  nine_side text check (nine_side is null or nine_side in ('front', 'back')),
+  hole_count integer not null default 18 check (hole_count in (9, 18)),
+  created_at timestamptz not null default now(),
+  constraint rounds_league_fields_check check (
+    (play_mode = 'league'
+      and league_id_night is not null
+      and team_name is not null
+      and hole_count = 9)
+    or play_mode = 'non_league'
+  ),
+  constraint rounds_nine_side_required_check check (
+    (hole_count = 9 and nine_side is not null)
+    or (hole_count = 18 and nine_side is null)
+  )
 );
 
 alter table public.rounds enable row level security;
@@ -210,6 +226,7 @@ create policy "Users can join leagues"
 create index idx_rounds_user_id on public.rounds(user_id);
 create index idx_rounds_date on public.rounds(date desc);
 create index idx_rounds_course_id on public.rounds(course_id);
+create index idx_rounds_play_mode on public.rounds(play_mode);
 create index idx_hole_scores_round_id on public.hole_scores(round_id);
 create index idx_league_members_user_id on public.league_members(user_id);
 

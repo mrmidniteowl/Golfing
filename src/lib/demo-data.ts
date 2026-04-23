@@ -27,6 +27,11 @@ function demoRound(daysAgo: number, score: number, putts: number, fw: number, gi
     greens_in_regulation: gir,
     notes: null,
     is_locked: false,
+    play_mode: 'non_league',
+    league_id_night: null,
+    team_name: null,
+    nine_side: null,
+    hole_count: 18,
     created_at: date.toISOString(),
     course: DEMO_COURSE,
   }

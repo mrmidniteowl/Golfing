@@ -59,6 +59,10 @@ export interface Course {
   created_at: string
 }
 
+export type PlayMode = 'league' | 'non_league'
+export type NineSide = 'front' | 'back'
+export type HoleCount = 9 | 18
+
 export interface Round {
   id: string
   user_id: string
@@ -70,6 +74,11 @@ export interface Round {
   greens_in_regulation: number | null
   notes: string | null
   is_locked: boolean
+  play_mode: PlayMode
+  league_id_night: string | null
+  team_name: string | null
+  nine_side: NineSide | null
+  hole_count: HoleCount
   created_at: string
   // joined
   course?: Course
