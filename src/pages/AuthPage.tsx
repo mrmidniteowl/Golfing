@@ -1,6 +1,21 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { isSupabaseConfigured as isConfigured } from '../lib/supabase'
+
+function AuthBackground({ children }: { children: ReactNode }) {
+  return (
+    <div className="min-h-screen flex items-start justify-center px-4 pt-8 pb-4 relative overflow-hidden">
+      <div
+        className="absolute inset-0 bg-cover bg-center"
+        style={{ backgroundImage: `url('${import.meta.env.BASE_URL}auth-bg.png')` }}
+      />
+      <div className="absolute inset-0 bg-green-50/50 dark:bg-gray-950/60" />
+      <div className="relative z-10 w-full flex items-start justify-center">
+        {children}
+      </div>
+    </div>
+  )
+}
 
 export default function AuthPage() {
   const { signIn, signUp } = useAuth()
@@ -34,7 +49,7 @@ export default function AuthPage() {
 
   if (signUpSuccess) {
     return (
-      <div className="min-h-screen bg-green-50 dark:bg-gray-950 flex items-center justify-center p-4">
+      <AuthBackground>
         <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-lg p-8 max-w-md w-full text-center">
           <div className="text-5xl mb-4">&#9989;</div>
           <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Check Your Email</h2>
@@ -48,12 +63,12 @@ export default function AuthPage() {
             Back to Sign In
           </button>
         </div>
-      </div>
+      </AuthBackground>
     )
   }
 
   return (
-    <div className="min-h-screen bg-green-50 dark:bg-gray-950 flex items-center justify-center p-4">
+    <AuthBackground>
       <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-lg p-8 max-w-md w-full">
         <div className="text-center mb-6">
           <h1 className="text-3xl font-bold text-green-700 dark:text-green-400 mb-1">Golfing with the Boyz</h1>
@@ -127,6 +142,6 @@ export default function AuthPage() {
           </button>
         </p>
       </div>
-    </div>
+    </AuthBackground>
   )
 }
