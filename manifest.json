@@ -1,6 +1,6 @@
 {
-  "name": "GolfTracker",
-  "short_name": "GolfTracker",
+  "name": "Golfing with the Boyz",
+  "short_name": "Golfing with the Boyz",
   "description": "Golf Score Tracking & League Management",
   "start_url": "/",
   "display": "standalone",
