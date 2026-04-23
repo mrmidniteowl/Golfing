@@ -56,7 +56,7 @@ export default function AuthPage() {
     <div className="min-h-screen bg-green-50 dark:bg-gray-950 flex items-center justify-center p-4">
       <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-lg p-8 max-w-md w-full">
         <div className="text-center mb-6">
-          <h1 className="text-3xl font-bold text-green-700 dark:text-green-400 mb-1">GolfTracker</h1>
+          <h1 className="text-3xl font-bold text-green-700 dark:text-green-400 mb-1">Golfing with the Boyz</h1>
           <p className="text-gray-500 dark:text-gray-400">Track scores. Compete. Improve.</p>
         </div>
 

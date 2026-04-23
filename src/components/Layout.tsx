@@ -22,7 +22,7 @@ export default function Layout() {
       {/* Header */}
       <header className="bg-green-700 dark:bg-green-900 text-white px-4 py-3 flex items-center justify-between sticky top-0 z-50 shadow-md">
         <div className="flex items-center gap-2">
-          <span className="text-xl font-bold tracking-tight">GolfTracker</span>
+          <span className="text-xl font-bold tracking-tight">Golfing with the Boyz</span>
         </div>
         <div className="flex items-center gap-2">
           <button

@@ -18,7 +18,7 @@ function AppRoutes() {
       <div className="min-h-screen bg-green-50 dark:bg-gray-950 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-green-600 mx-auto mb-3" />
-          <p className="text-green-700 dark:text-green-400 font-medium">Loading GolfTracker...</p>
+          <p className="text-green-700 dark:text-green-400 font-medium">Loading Golfing with the Boyz...</p>
         </div>
       </div>
     )

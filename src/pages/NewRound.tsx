@@ -447,7 +447,7 @@ function ScoreSection({ title, holeStart, holeEnd, holePars, scores, putts, fair
                         : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
                     }`}
                   >
-                    FW Hit
+                    Fairway Hit
                   </button>
                   <button
                     onClick={() => onGirChange(hole, girs[hole] === true ? null : true)}
@@ -457,7 +457,7 @@ function ScoreSection({ title, holeStart, holeEnd, holePars, scores, putts, fair
                         : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
                     }`}
                   >
-                    GIR
+                    Green in Regulation
                   </button>
                 </div>
               )}

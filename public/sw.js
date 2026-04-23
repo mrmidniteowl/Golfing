@@ -1,4 +1,4 @@
-const CACHE_NAME = 'golf-tracker-v1'
+const CACHE_NAME = 'golfing-with-the-boyz-v1'
 const STATIC_ASSETS = [
   '/',
   '/index.html',
