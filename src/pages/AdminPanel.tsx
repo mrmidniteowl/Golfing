@@ -11,7 +11,7 @@ export default function AdminPanel() {
   const [rounds, setRounds] = useState<Round[]>([])
   const [_courses, setCourses] = useState<Course[]>([])
   const [loading, setLoading] = useState(true)
-  const [tab, setTab] = useState<'players' | 'rounds' | 'reports'>('players')
+  const [tab, setTab] = useState<'players' | 'rounds' | 'teams' | 'reports'>('players')
   const [editingScore, setEditingScore] = useState<{ id: string; score: number } | null>(null)
   const [editingName, setEditingName] = useState<{ id: string; value: string } | null>(null)
   const [pwModalUser, setPwModalUser] = useState<Profile | null>(null)
@@ -26,6 +26,11 @@ export default function AdminPanel() {
   const [createError, setCreateError] = useState<string | null>(null)
   const [createSubmitting, setCreateSubmitting] = useState(false)
 
+  const [teams, setTeams] = useState<{ id: string; name: string }[]>([])
+  const [newTeamName, setNewTeamName] = useState('')
+  const [teamError, setTeamError] = useState<string | null>(null)
+  const [teamSaving, setTeamSaving] = useState(false)
+
   const isAdmin = currentProfile?.role === 'commissioner' || currentProfile?.role === 'admin'
 
   useEffect(() => {
@@ -34,7 +39,7 @@ export default function AdminPanel() {
   }, [isAdmin])
 
   async function loadData() {
-    const [p, r, c] = await Promise.all([
+    const [p, r, c, t] = await Promise.all([
       supabase.from('profiles').select('*').order('full_name'),
       supabase.from('rounds').select('*, course:courses(*), profile:profiles(*)').order('date', { ascending: false }),
       supabase.from('courses').select('*').order('name'),
@@ -217,7 +222,7 @@ export default function AdminPanel() {
 
       {/* Tabs */}
       <div className="flex gap-2">
-        {(['players', 'rounds', 'reports'] as const).map((t) => (
+        {(['players', 'rounds', 'teams', 'reports'] as const).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -353,6 +358,47 @@ export default function AdminPanel() {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Teams tab */
+      {tab === 'teams' && (
+        <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm overflow-hidden">
+          <div className="px-4 py-3 bg-gray-50 dark:bg-gray-800 font-semibold text-sm text-gray-700 dark:text-gray-300">Team Names</div>
+          <div className="divide-y divide-gray-100 dark:divide-gray-800">
+            {teams.map((team) => (
+              <div key={team.id} className="flex items-center justify-between px-4 py-3">
+                <span className="text-sm text-gray-900 dark:text-white">{team.name}</span>
+                <button
+                  onClick={() => deleteTeam(team.id, team.name)}
+                  className="p-1.5 rounded-full text-red-400 hover:bg-red-50 dark:hover:bg-red-950"
+                  title="Delete team"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            ))}
+          </div>
+          <div className="px-4 py-3 border-t border-gray-100 dark:border-gray-800 space-y-2">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="New team name"
+                value={newTeamName}
+                onChange={(e) => setNewTeamName(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && addTeam()}
+                className="flex-1 px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+              />
+              <button
+                onClick={addTeam}
+                disabled={teamSaving || !newTeamName.trim()}
+                className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg"
+              >
+                {teamSaving ? 'Adding...' : 'Add'}
+              </button>
+            </div>
+            {teamError && <p className="text-sm text-red-600 dark:text-red-400">{teamError}</p>}
           </div>
         </div>
       )}
