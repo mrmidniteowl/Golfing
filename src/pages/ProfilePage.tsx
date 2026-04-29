@@ -89,12 +89,20 @@ export default function ProfilePage() {
   const avgPutts = filteredRounds.filter((r) => r.total_putts).length > 0
     ? Math.round(filteredRounds.filter((r) => r.total_putts).reduce((s, r) => s + (r.total_putts ?? 0), 0) / filteredRounds.filter((r) => r.total_putts).length * 10) / 10
     : null
-  const avgGir = filteredRounds.filter((r) => r.greens_in_regulation !== null).length > 0
-    ? Math.round(filteredRounds.filter((r) => r.greens_in_regulation !== null).reduce((s, r) => s + (r.greens_in_regulation ?? 0), 0) / filteredRounds.filter((r) => r.greens_in_regulation !== null).length * 10) / 10
+  const girRounds = filteredRounds.filter((r) => r.greens_in_regulation !== null)
+  const avgGir = girRounds.length > 0
+    ? Math.round(girRounds.reduce((s, r) => s + (r.greens_in_regulation ?? 0), 0) / girRounds.length * 10) / 10
     : null
-  const avgFw = filteredRounds.filter((r) => r.fairways_hit !== null).length > 0
-    ? Math.round(filteredRounds.filter((r) => r.fairways_hit !== null).reduce((s, r) => s + (r.fairways_hit ?? 0), 0) / filteredRounds.filter((r) => r.fairways_hit !== null).length * 10) / 10
+  const girDenominator = girRounds.length > 0
+    ? Math.round(girRounds.reduce((s, r) => s + (r.hole_count ?? 18), 0) / girRounds.length)
+    : 18
+  const fwRounds = filteredRounds.filter((r) => r.fairways_hit !== null)
+  const avgFw = fwRounds.length > 0
+    ? Math.round(fwRounds.reduce((s, r) => s + (r.fairways_hit ?? 0), 0) / fwRounds.length * 10) / 10
     : null
+  const fwDenominator = fwRounds.length > 0
+    ? Math.round(fwRounds.reduce((s, r) => s + (r.hole_count === 9 ? 7 : 14), 0) / fwRounds.length)
+    : 14
 
   // Score distribution for chart (par-relative uses the course par; works across hole counts because we compare to course par either way)
   const scoreDistribution = filteredRounds.reduce((acc, r) => {
@@ -194,8 +202,8 @@ export default function ProfilePage() {
         <MiniStat label="Avg Score" value={avgScore?.toFixed(1) ?? '--'} />
         <MiniStat label="Rounds" value={filteredRounds.length.toString()} />
         <MiniStat label="Avg Putts" value={avgPutts?.toFixed(1) ?? '--'} />
-        <MiniStat label="Avg GIR" value={avgGir !== null ? `${avgGir.toFixed(1)}/18` : '--'} />
-        <MiniStat label="Avg FW" value={avgFw !== null ? `${avgFw.toFixed(1)}/14` : '--'} />
+        <MiniStat label="Avg GIR" value={avgGir !== null ? `${avgGir.toFixed(1)}/${girDenominator}` : '--'} />
+        <MiniStat label="Avg FW" value={avgFw !== null ? `${avgFw.toFixed(1)}/${fwDenominator}` : '--'} />
       </div>
 
       {/* Monthly average chart */}
