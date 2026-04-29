@@ -11,7 +11,7 @@ export default function AdminPanel() {
   const [rounds, setRounds] = useState<Round[]>([])
   const [_courses, setCourses] = useState<Course[]>([])
   const [loading, setLoading] = useState(true)
-  const [tab, setTab] = useState<'players' | 'rounds' | 'reports'>('players')
+  const [tab, setTab] = useState<'players' | 'rounds' | 'scorecards' | 'reports'>('players')
   const [editingScore, setEditingScore] = useState<{ id: string; score: number } | null>(null)
   const [editingName, setEditingName] = useState<{ id: string; value: string } | null>(null)
   const [pwModalUser, setPwModalUser] = useState<Profile | null>(null)
@@ -25,6 +25,13 @@ export default function AdminPanel() {
   const [newPlayerPw, setNewPlayerPw] = useState('')
   const [createError, setCreateError] = useState<string | null>(null)
   const [createSubmitting, setCreateSubmitting] = useState(false)
+
+  const [scTeam, setScTeam] = useState('')
+  const [scPlayer, setScPlayer] = useState('')
+  const [scRoundId, setScRoundId] = useState('')
+  const [scHoleScores, setScHoleScores] = useState<{ id: string; hole_number: number; strokes: number; putts: number | null; fairway_hit: boolean | null; gir: boolean | null }[]>([])
+  const [scEdits, setScEdits] = useState<Record<number, number>>({})
+  const [scSaving, setScSaving] = useState(false)
 
   const isAdmin = currentProfile?.role === 'commissioner' || currentProfile?.role === 'admin'
 
@@ -61,6 +68,39 @@ export default function AdminPanel() {
     await supabase.from('hole_scores').delete().eq('round_id', roundId)
     await supabase.from('rounds').delete().eq('id', roundId)
     setRounds((prev) => prev.filter((r) => r.id !== roundId))
+  }
+
+  async function loadScorecard(roundId: string) {
+    setScRoundId(roundId)
+    setScEdits({})
+    const { data } = await supabase
+      .from('hole_scores')
+      .select('*')
+      .eq('round_id', roundId)
+      .order('hole_number')
+    setScHoleScores((data ?? []) as typeof scHoleScores)
+  }
+
+  async function saveScorecard() {
+    if (!scRoundId) return
+    setScSaving(true)
+    const updates = Object.entries(scEdits).map(([holeNum, strokes]) => {
+      const existing = scHoleScores.find((h) => h.hole_number === Number(holeNum))
+      if (existing) {
+        return supabase.from('hole_scores').update({ strokes }).eq('id', existing.id)
+      }
+      return supabase.from('hole_scores').insert({ round_id: scRoundId, hole_number: Number(holeNum), strokes })
+    })
+    await Promise.all(updates)
+    const updatedHoles = scHoleScores.map((h) =>
+      scEdits[h.hole_number] !== undefined ? { ...h, strokes: scEdits[h.hole_number] } : h
+    )
+    const newTotal = updatedHoles.reduce((s, h) => s + h.strokes, 0)
+    await supabase.from('rounds').update({ total_score: newTotal }).eq('id', scRoundId)
+    setRounds((prev) => prev.map((r) => r.id === scRoundId ? { ...r, total_score: newTotal } : r))
+    setScHoleScores(updatedHoles)
+    setScEdits({})
+    setScSaving(false)
   }
 
   async function changeRole(userId: string, newRole: 'player' | 'commissioner') {
@@ -217,7 +257,7 @@ export default function AdminPanel() {
 
       {/* Tabs */}
       <div className="flex gap-2">
-        {(['players', 'rounds', 'reports'] as const).map((t) => (
+        {(['players', 'rounds', 'scorecards', 'reports'] as const).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -354,6 +394,101 @@ export default function AdminPanel() {
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Scorecards tab */}
+      {tab === 'scorecards' && (
+        <div className="space-y-4">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm overflow-hidden">
+            <div className="px-4 py-3 bg-gray-50 dark:bg-gray-800 font-semibold text-sm text-gray-700 dark:text-gray-300">Edit Scorecard</div>
+            <div className="p-4 space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Team Name</label>
+                <select
+                  value={scTeam}
+                  onChange={(e) => { setScTeam(e.target.value); setScPlayer(''); setScRoundId(''); setScHoleScores([]); setScEdits({}) }}
+                  className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                >
+                  <option value="">Select team...</option>
+                  {[...new Set(rounds.filter((r) => r.team_name).map((r) => r.team_name!))].sort().map((tn) => (
+                    <option key={tn} value={tn}>{tn}</option>
+                  ))}
+                </select>
+              </div>
+              {scTeam && (
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Player</label>
+                  <select
+                    value={scPlayer}
+                    onChange={(e) => { setScPlayer(e.target.value); setScRoundId(''); setScHoleScores([]); setScEdits({}) }}
+                    className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                  >
+                    <option value="">Select player...</option>
+                    {players
+                      .filter((p) => rounds.some((r) => r.user_id === p.id && r.team_name === scTeam))
+                      .map((p) => (
+                        <option key={p.id} value={p.id}>{p.full_name}</option>
+                      ))}
+                  </select>
+                </div>
+              )}
+              {scPlayer && (
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Round</label>
+                  <select
+                    value={scRoundId}
+                    onChange={(e) => e.target.value && loadScorecard(e.target.value)}
+                    className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                  >
+                    <option value="">Select round...</option>
+                    {rounds
+                      .filter((r) => r.user_id === scPlayer && r.team_name === scTeam)
+                      .map((r) => (
+                        <option key={r.id} value={r.id}>{r.date} — {r.course?.name ?? 'Unknown'} ({r.total_score})</option>
+                      ))}
+                  </select>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {scRoundId && scHoleScores.length > 0 && (
+            <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm overflow-hidden">
+              <div className="px-4 py-3 bg-gray-50 dark:bg-gray-800 font-semibold text-sm text-gray-700 dark:text-gray-300">Hole Scores</div>
+              <div className="divide-y divide-gray-100 dark:divide-gray-800">
+                {scHoleScores.map((h) => (
+                  <div key={h.id} className="flex items-center px-4 py-2 gap-3">
+                    <span className="w-16 text-sm text-gray-500">Hole {h.hole_number}</span>
+                    <input
+                      type="number"
+                      min={1}
+                      max={15}
+                      value={scEdits[h.hole_number] ?? h.strokes}
+                      onChange={(e) => setScEdits((prev) => ({ ...prev, [h.hole_number]: Number(e.target.value) }))}
+                      className="w-20 px-2 py-1 text-sm border rounded-lg dark:bg-gray-800 dark:border-gray-700 dark:text-white"
+                    />
+                    <span className="text-xs text-gray-400">
+                      {h.putts !== null ? `${h.putts} putts` : ''}{h.fairway_hit ? ' · FW' : ''}{h.gir ? ' · GIR' : ''}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <div className="px-4 py-3 border-t border-gray-100 dark:border-gray-800 flex justify-between items-center">
+                <span className="text-sm text-gray-500">
+                  Total: {scHoleScores.map((h) => scEdits[h.hole_number] ?? h.strokes).reduce((a, b) => a + b, 0)}
+                  {Object.keys(scEdits).length > 0 && <span className="text-amber-500 ml-2">(unsaved changes)</span>}
+                </span>
+                <button
+                  onClick={saveScorecard}
+                  disabled={scSaving || Object.keys(scEdits).length === 0}
+                  className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg"
+                >
+                  {scSaving ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
