@@ -20,7 +20,7 @@ interface PlayerStats {
 type SortMode = 'handicap' | 'average' | 'latest'
 
 export default function Leaderboard() {
-  const { isDemo } = useAuth()
+  const { isDemo, user, profile: currentProfile } = useAuth()
   const [profiles, setProfiles] = useState<Profile[]>([])
   const [allRounds, setAllRounds] = useState<Round[]>([])
   const [courseMap, setCourseMap] = useState<Map<string, Course>>(new Map())
@@ -81,7 +81,21 @@ export default function Leaderboard() {
     }).filter((p) => p.rounds.length > 0)
   }
 
-  const players = buildStats(profiles, filterByMode(allRounds, mode), courseMap)
+  // Determine current user's team from their most recent league round.
+  // Commissioners and admins see the full leaderboard.
+  const isCommissioner = currentProfile?.role === 'commissioner' || currentProfile?.role === 'admin'
+  const myTeam = !isCommissioner && user
+    ? (allRounds.find((r) => r.user_id === user.id && r.team_name)?.team_name ?? null)
+    : null
+
+  const visibleProfiles = myTeam
+    ? profiles.filter((p) =>
+        p.id === user?.id ||
+        allRounds.some((r) => r.user_id === p.id && r.team_name === myTeam)
+      )
+    : profiles
+
+  const players = buildStats(visibleProfiles, filterByMode(allRounds, mode), courseMap)
 
   function getSorted() {
     const copy = [...players]
