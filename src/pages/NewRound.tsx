@@ -449,7 +449,9 @@ export default function NewRound() {
   const [holeStart, holeEnd] = getHoleRange()
   const showFront = holeStart === 0
   const showBack = holeEnd === 18
-  const playedScoresHaveValue = scores.slice(holeStart, holeEnd).some((s) => s > 0)
+  const playedHoles = scores.slice(holeStart, holeEnd)
+  const allHolesScored = playedHoles.every((s) => s > 0)
+  const unscoredCount = playedHoles.filter((s) => s === 0).length
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 space-y-4">
       <div className="flex items-center justify-between">
@@ -517,9 +519,14 @@ export default function NewRound() {
         className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm"
       />
 
+      {!allHolesScored && unscoredCount > 0 && (
+        <p className="text-center text-sm text-amber-600 dark:text-amber-400">
+          {unscoredCount} hole{unscoredCount !== 1 ? 's' : ''} still need{unscoredCount === 1 ? 's' : ''} a score
+        </p>
+      )}
       <button
         onClick={saveRound}
-        disabled={saving || !playedScoresHaveValue}
+        disabled={saving || !allHolesScored}
         className="w-full bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white font-bold py-3 rounded-xl transition"
       >
         {saving ? 'Saving...' : 'Save Round'}
@@ -577,7 +584,7 @@ function ScoreSection({ title, holeStart, holeEnd, holePars, scores, putts, fair
           return (
             <div key={hole}>
               <div
-                className="flex items-center px-4 py-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800"
+                className={`flex items-center px-4 py-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 ${score === 0 ? 'border-l-2 border-amber-400' : ''}`}
                 onClick={() => setExpanded(isExpanded ? null : hole)}
               >
                 <span className="w-12 text-sm font-medium text-gray-500">#{hole + 1}</span>
