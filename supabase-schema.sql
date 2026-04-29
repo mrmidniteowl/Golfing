@@ -221,6 +221,26 @@ create policy "Users can join leagues"
   with check (auth.uid() = user_id);
 
 -- =============================================
+-- TEAMS
+-- =============================================
+create table public.teams (
+  id uuid primary key default uuid_generate_v4(),
+  name text not null unique,
+  created_at timestamptz not null default now()
+);
+
+alter table public.teams enable row level security;
+
+create policy "Teams are viewable by everyone"
+  on public.teams for select using (true);
+
+create policy "Commissioners can manage teams"
+  on public.teams for all
+  using (exists (select 1 from public.profiles where id = auth.uid() and role in ('commissioner', 'admin')));
+
+insert into public.teams (name) values ('Wisconsin Knights'), ('Test');
+
+-- =============================================
 -- INDEXES for performance
 -- =============================================
 create index idx_rounds_user_id on public.rounds(user_id);

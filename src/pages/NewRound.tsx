@@ -37,6 +37,7 @@ export default function NewRound() {
   const [teamName, setTeamName] = useState<string>('')
   const [holeCount, setHoleCount] = useState<HoleCount>(18)
   const [nineSide, setNineSide] = useState<NineSide | ''>('')
+  const [teamOptions, setTeamOptions] = useState<string[]>([])
 
   useEffect(() => {
     loadCourses()
@@ -371,7 +372,7 @@ export default function NewRound() {
                 className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
               >
                 <option value="">Select...</option>
-                {TEAM_NAME_OPTIONS.map((v) => (
+                {teamOptions.map((v) => (
                   <option key={v} value={v}>{v}</option>
                 ))}
               </select>
