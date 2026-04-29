@@ -146,6 +146,7 @@ create table public.hole_scores (
   putts integer check (putts >= 0),
   fairway_hit boolean,
   gir boolean,
+  penalty_strokes integer not null default 0,
   unique (round_id, hole_number)
 );
 
