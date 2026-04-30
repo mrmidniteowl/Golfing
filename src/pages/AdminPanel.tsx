@@ -108,29 +108,60 @@ export default function AdminPanel() {
       .select('*')
       .eq('round_id', roundId)
       .order('hole_number')
-    const scores = (data ?? []) as typeof scHoleScores
-    setScHoleScores(scores)
-    setScNoScores(scores.length === 0)
+    const existing = (data ?? []) as typeof scHoleScores
+    if (existing.length > 0) {
+      setScHoleScores(existing)
+    } else {
+      const round = rounds.find((r) => r.id === roundId)
+      const holeCount = round?.hole_count ?? 9
+      const placeholders = Array.from({ length: holeCount }, (_, i) => ({
+        id: '',
+        hole_number: i + 1,
+        strokes: 0,
+        putts: null,
+        fairway_hit: null,
+        gir: null,
+      }))
+      setScHoleScores(placeholders)
+      setScNoScores(true)
+    }
   }
 
   async function saveScorecard() {
     if (!scRoundId) return
     setScSaving(true)
-    const updates = Object.entries(scEdits).map(([holeNum, strokes]) => {
-      const existing = scHoleScores.find((h) => h.hole_number === Number(holeNum))
-      if (existing) {
-        return supabase.from('hole_scores').update({ strokes }).eq('id', existing.id)
-      }
-      return supabase.from('hole_scores').insert({ round_id: scRoundId, hole_number: Number(holeNum), strokes })
-    })
-    await Promise.all(updates)
-    const updatedHoles = scHoleScores.map((h) =>
-      scEdits[h.hole_number] !== undefined ? { ...h, strokes: scEdits[h.hole_number] } : h
-    )
-    const newTotal = updatedHoles.reduce((s, h) => s + h.strokes, 0)
-    await supabase.from('rounds').update({ total_score: newTotal }).eq('id', scRoundId)
-    setRounds((prev) => prev.map((r) => r.id === scRoundId ? { ...r, total_score: newTotal } : r))
-    setScHoleScores(updatedHoles)
+
+    if (scNoScores) {
+      const inserts = scHoleScores.map((h) => ({
+        round_id: scRoundId,
+        hole_number: h.hole_number,
+        strokes: scEdits[h.hole_number] ?? 0,
+      })).filter((h) => h.strokes > 0)
+      if (inserts.length > 0) await supabase.from('hole_scores').insert(inserts)
+      const newTotal = inserts.reduce((s, h) => s + h.strokes, 0)
+      await supabase.from('rounds').update({ total_score: newTotal }).eq('id', scRoundId)
+      setRounds((prev) => prev.map((r) => r.id === scRoundId ? { ...r, total_score: newTotal } : r))
+      const { data } = await supabase.from('hole_scores').select('*').eq('round_id', scRoundId).order('hole_number')
+      setScHoleScores((data ?? []) as typeof scHoleScores)
+      setScNoScores(false)
+    } else {
+      const updates = Object.entries(scEdits).map(([holeNum, strokes]) => {
+        const existing = scHoleScores.find((h) => h.hole_number === Number(holeNum))
+        if (existing) {
+          return supabase.from('hole_scores').update({ strokes }).eq('id', existing.id)
+        }
+        return supabase.from('hole_scores').insert({ round_id: scRoundId, hole_number: Number(holeNum), strokes })
+      })
+      await Promise.all(updates)
+      const updatedHoles = scHoleScores.map((h) =>
+        scEdits[h.hole_number] !== undefined ? { ...h, strokes: scEdits[h.hole_number] } : h
+      )
+      const newTotal = updatedHoles.reduce((s, h) => s + h.strokes, 0)
+      await supabase.from('rounds').update({ total_score: newTotal }).eq('id', scRoundId)
+      setRounds((prev) => prev.map((r) => r.id === scRoundId ? { ...r, total_score: newTotal } : r))
+      setScHoleScores(updatedHoles)
+    }
+
     setScEdits({})
     setScSaving(false)
   }
@@ -500,15 +531,12 @@ export default function AdminPanel() {
             </div>
           </div>
 
-          {scRoundId && scNoScores && (
-            <div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-2xl px-4 py-3 text-sm text-amber-700 dark:text-amber-400">
-              No hole-by-hole scores recorded for this round. Scores must be entered hole-by-hole to edit them here.
-            </div>
-          )}
-
           {scRoundId && scHoleScores.length > 0 && (
             <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm overflow-hidden">
-              <div className="px-4 py-3 bg-gray-50 dark:bg-gray-800 font-semibold text-sm text-gray-700 dark:text-gray-300">Hole Scores</div>
+              <div className="px-4 py-3 bg-gray-50 dark:bg-gray-800 font-semibold text-sm text-gray-700 dark:text-gray-300 flex items-center justify-between">
+                <span>Hole Scores</span>
+                {scNoScores && <span className="text-xs font-normal text-amber-600 dark:text-amber-400">No scores yet — enter below to create</span>}
+              </div>
               <div className="divide-y divide-gray-100 dark:divide-gray-800">
                 {scHoleScores.map((h) => (
                   <div key={h.id} className="flex items-center px-4 py-2 gap-3">
@@ -534,7 +562,7 @@ export default function AdminPanel() {
                 </span>
                 <button
                   onClick={saveScorecard}
-                  disabled={scSaving || Object.keys(scEdits).length === 0}
+                  disabled={scSaving || (Object.keys(scEdits).length === 0 && !scNoScores)}
                   className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg"
                 >
                   {scSaving ? 'Saving...' : 'Save Changes'}
