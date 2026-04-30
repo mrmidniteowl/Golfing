@@ -103,6 +103,9 @@ export default function ProfilePage() {
   const fwDenominator = fwRounds.length > 0
     ? Math.round(fwRounds.reduce((s, r) => s + (r.hole_count === 9 ? 7 : 14), 0) / fwRounds.length)
     : 14
+  const avgPenalties = filteredRounds.length > 0
+    ? Math.round(filteredRounds.reduce((s, r) => s + r.total_penalties, 0) / filteredRounds.length * 10) / 10
+    : null
 
   // Score distribution for chart (par-relative uses the course par; works across hole counts because we compare to course par either way)
   const scoreDistribution = filteredRounds.reduce((acc, r) => {
@@ -204,6 +207,7 @@ export default function ProfilePage() {
         <MiniStat label="Avg Putts" value={avgPutts?.toFixed(1) ?? '--'} />
         <MiniStat label="Avg GIR" value={avgGir !== null ? `${avgGir.toFixed(1)}/${girDenominator}` : '--'} />
         <MiniStat label="Avg FW" value={avgFw !== null ? `${avgFw.toFixed(1)}/${fwDenominator}` : '--'} />
+        <MiniStat label="Avg Penalties" value={avgPenalties?.toFixed(1) ?? '--'} />
       </div>
 
       {/* Monthly average chart */}

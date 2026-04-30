@@ -11,8 +11,6 @@ import { PATRIOT_GOLF_CLUB } from '../lib/patriot-course'
 const DEFAULT_PARS = PATRIOT_GOLF_CLUB.hole_pars
 
 const LEAGUE_ID_NIGHT_OPTIONS = ['PGC.Thursday', 'PGC.Test'] as const
-const TEAM_NAME_OPTIONS = ['Wisconsin Knights', 'Test'] as const
-
 export default function NewRound() {
   const { user } = useAuth()
   const navigate = useNavigate()
@@ -42,11 +40,17 @@ export default function NewRound() {
 
   useEffect(() => {
     loadCourses()
+    loadTeams()
   }, [])
 
   async function loadCourses() {
     const { data } = await supabase.from('courses').select('*').order('name')
     if (data) setCourses(data as Course[])
+  }
+
+  async function loadTeams() {
+    const { data } = await supabase.from('teams').select('name').order('name')
+    if (data) setTeamOptions(data.map((t: { name: string }) => t.name))
   }
 
   async function detectLocation() {
@@ -135,11 +139,13 @@ export default function NewRound() {
     const playedPutts = putts.slice(start, end)
     const playedFairways = fairways.slice(start, end)
     const playedGirs = girs.slice(start, end)
+    const playedPenalties = penalties.slice(start, end)
 
     const totalScore = playedScores.reduce((a, b) => a + b, 0)
     const totalPutts = playedPutts.some((p) => p !== null) ? playedPutts.reduce((a: number, p) => a + (p ?? 0), 0) : null
     const fwHit = playedFairways.some((f) => f !== null) ? playedFairways.filter((f) => f === true).length : null
     const girCount = playedGirs.some((g) => g !== null) ? playedGirs.filter((g) => g === true).length : null
+    const totalPenalties = playedPenalties.reduce((a, b) => a + b, 0)
 
     const roundData = {
       user_id: user.id,
@@ -149,6 +155,7 @@ export default function NewRound() {
       total_putts: totalPutts,
       fairways_hit: fwHit,
       greens_in_regulation: girCount,
+      total_penalties: totalPenalties,
       notes: notes || null,
       is_locked: false,
       play_mode: playMode,

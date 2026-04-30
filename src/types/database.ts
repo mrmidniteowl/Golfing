@@ -72,6 +72,7 @@ export interface Round {
   total_putts: number | null
   fairways_hit: number | null
   greens_in_regulation: number | null
+  total_penalties: number
   notes: string | null
   is_locked: boolean
   play_mode: PlayMode

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { PlusCircle, TrendingUp, Calendar, Target } from 'lucide-react'
+import { PlusCircle, TrendingUp, Calendar, Target, AlertTriangle } from 'lucide-react'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 import { format } from 'date-fns'
 import { supabase, isSupabaseConfigured } from '../lib/supabase'
@@ -59,6 +59,9 @@ export default function Dashboard() {
     : null
   const bestScore = filteredRounds.length > 0 ? Math.min(...filteredRounds.map((r) => r.total_score)) : null
   const totalRounds = filteredRounds.length
+  const avgPenalties = filteredRounds.length > 0
+    ? Math.round(filteredRounds.reduce((s, r) => s + r.total_penalties, 0) / filteredRounds.length * 10) / 10
+    : null
 
   const chartData = [...filteredRounds]
     .reverse()
@@ -108,6 +111,7 @@ export default function Dashboard() {
         <StatCard icon={<TrendingUp size={20} />} label="Avg Score" value={avgScore?.toString() ?? 'N/A'} color="blue" />
         <StatCard icon={<Calendar size={20} />} label="Rounds" value={totalRounds.toString()} color="purple" />
         <StatCard icon={<TrendingUp size={20} />} label="Best Score" value={bestScore?.toString() ?? 'N/A'} color="orange" />
+        <StatCard icon={<AlertTriangle size={20} />} label="Avg Penalties" value={avgPenalties?.toFixed(1) ?? 'N/A'} color="red" />
       </div>
 
       {/* Score trend chart */}
@@ -181,6 +185,7 @@ function StatCard({ icon, label, value, color }: { icon: React.ReactNode; label:
     blue: 'bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-400',
     purple: 'bg-purple-50 dark:bg-purple-950 text-purple-700 dark:text-purple-400',
     orange: 'bg-orange-50 dark:bg-orange-950 text-orange-700 dark:text-orange-400',
+    red: 'bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-400',
   }
 
   return (
