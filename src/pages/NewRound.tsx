@@ -183,14 +183,15 @@ export default function NewRound() {
       round_id: round.id,
       hole_number: i + 1,
       strokes,
-      putts: putts[i],
-      fairway_hit: fairways[i],
-      gir: girs[i],
-      penalty_strokes: penalties[i],
     })).filter((h, i) => h.strokes > 0 && i >= start && i < end)
 
     if (holeScores.length > 0) {
-      await supabase.from('hole_scores').insert(holeScores)
+      const { error: hsError } = await supabase.from('hole_scores').insert(holeScores)
+      if (hsError) {
+        alert('Round saved but hole scores failed: ' + hsError.message)
+        setSaving(false)
+        return
+      }
     }
 
     setSaving(false)
