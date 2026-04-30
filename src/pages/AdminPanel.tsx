@@ -26,16 +26,21 @@ export default function AdminPanel() {
   const [createError, setCreateError] = useState<string | null>(null)
   const [createSubmitting, setCreateSubmitting] = useState(false)
 
+  const [scLeague, setScLeague] = useState('')
   const [scTeam, setScTeam] = useState('')
   const [scPlayer, setScPlayer] = useState('')
   const [scRoundId, setScRoundId] = useState('')
   const [scHoleScores, setScHoleScores] = useState<{ id: string; hole_number: number; strokes: number; putts: number | null; fairway_hit: boolean | null; gir: boolean | null }[]>([])
+  const [scNoScores, setScNoScores] = useState(false)
   const [scEdits, setScEdits] = useState<Record<number, number>>({})
   const [scSaving, setScSaving] = useState(false)
-  const [teams, setTeams] = useState<{ id: string; name: string }[]>([])
+  const [teams, setTeams] = useState<{ id: string; name: string; league_id_night: string }[]>([])
   const [newTeamName, setNewTeamName] = useState('')
+  const [newTeamLeague, setNewTeamLeague] = useState('PGC.Thursday')
   const [teamError, setTeamError] = useState<string | null>(null)
   const [teamSaving, setTeamSaving] = useState(false)
+
+  const LEAGUE_OPTIONS = ['PGC.Thursday', 'PGC.Test'] as const
 
   const isAdmin = currentProfile?.role === 'commissioner' || currentProfile?.role === 'admin'
 
@@ -54,7 +59,7 @@ export default function AdminPanel() {
     if (p.data) setPlayers(p.data as Profile[])
     if (r.data) setRounds(r.data as Round[])
     if (c.data) setCourses(c.data as Course[])
-    if (t.data) setTeams(t.data as { id: string; name: string }[])
+    if (t.data) setTeams(t.data as { id: string; name: string; league_id_night: string }[])
     setLoading(false)
   }
 
@@ -63,10 +68,10 @@ export default function AdminPanel() {
     if (!name) return
     setTeamError(null)
     setTeamSaving(true)
-    const { data, error } = await supabase.from('teams').insert({ name }).select().single()
+    const { data, error } = await supabase.from('teams').insert({ name, league_id_night: newTeamLeague }).select().single()
     setTeamSaving(false)
     if (error) { setTeamError(error.message); return }
-    setTeams((prev) => [...prev, data as { id: string; name: string }].sort((a, b) => a.name.localeCompare(b.name)))
+    setTeams((prev) => [...prev, data as { id: string; name: string; league_id_night: string }].sort((a, b) => a.name.localeCompare(b.name)))
     setNewTeamName('')
   }
 
@@ -97,12 +102,15 @@ export default function AdminPanel() {
   async function loadScorecard(roundId: string) {
     setScRoundId(roundId)
     setScEdits({})
+    setScNoScores(false)
     const { data } = await supabase
       .from('hole_scores')
       .select('*')
       .eq('round_id', roundId)
       .order('hole_number')
-    setScHoleScores((data ?? []) as typeof scHoleScores)
+    const scores = (data ?? []) as typeof scHoleScores
+    setScHoleScores(scores)
+    setScNoScores(scores.length === 0)
   }
 
   async function saveScorecard() {
@@ -428,29 +436,44 @@ export default function AdminPanel() {
             <div className="px-4 py-3 bg-gray-50 dark:bg-gray-800 font-semibold text-sm text-gray-700 dark:text-gray-300">Edit Scorecard</div>
             <div className="p-4 space-y-3">
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Team Name</label>
+                <label className="block text-xs font-medium text-gray-500 mb-1">League Night</label>
                 <select
-                  value={scTeam}
-                  onChange={(e) => { setScTeam(e.target.value); setScPlayer(''); setScRoundId(''); setScHoleScores([]); setScEdits({}) }}
+                  value={scLeague}
+                  onChange={(e) => { setScLeague(e.target.value); setScTeam(''); setScPlayer(''); setScRoundId(''); setScHoleScores([]); setScEdits({}); setScNoScores(false) }}
                   className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                 >
-                  <option value="">Select team...</option>
-                  {[...new Set(rounds.filter((r) => r.team_name).map((r) => r.team_name!))].sort().map((tn) => (
-                    <option key={tn} value={tn}>{tn}</option>
+                  <option value="">Select league night...</option>
+                  {LEAGUE_OPTIONS.map((l) => (
+                    <option key={l} value={l}>{l}</option>
                   ))}
                 </select>
               </div>
+              {scLeague && (
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Team Name</label>
+                  <select
+                    value={scTeam}
+                    onChange={(e) => { setScTeam(e.target.value); setScPlayer(''); setScRoundId(''); setScHoleScores([]); setScEdits({}); setScNoScores(false) }}
+                    className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                  >
+                    <option value="">Select team...</option>
+                    {teams.filter((t) => t.league_id_night === scLeague).map((t) => (
+                      <option key={t.id} value={t.name}>{t.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
               {scTeam && (
                 <div>
                   <label className="block text-xs font-medium text-gray-500 mb-1">Player</label>
                   <select
                     value={scPlayer}
-                    onChange={(e) => { setScPlayer(e.target.value); setScRoundId(''); setScHoleScores([]); setScEdits({}) }}
+                    onChange={(e) => { setScPlayer(e.target.value); setScRoundId(''); setScHoleScores([]); setScEdits({}); setScNoScores(false) }}
                     className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                   >
                     <option value="">Select player...</option>
                     {players
-                      .filter((p) => rounds.some((r) => r.user_id === p.id && r.team_name === scTeam))
+                      .filter((p) => rounds.some((r) => r.user_id === p.id && r.play_mode === 'league' && r.league_id_night === scLeague && r.team_name === scTeam))
                       .map((p) => (
                         <option key={p.id} value={p.id}>{p.full_name}</option>
                       ))}
@@ -467,7 +490,7 @@ export default function AdminPanel() {
                   >
                     <option value="">Select round...</option>
                     {rounds
-                      .filter((r) => r.user_id === scPlayer && r.team_name === scTeam)
+                      .filter((r) => r.user_id === scPlayer && r.play_mode === 'league' && r.league_id_night === scLeague && r.team_name === scTeam)
                       .map((r) => (
                         <option key={r.id} value={r.id}>{r.date} — {r.course?.name ?? 'Unknown'} ({r.total_score})</option>
                       ))}
@@ -476,6 +499,12 @@ export default function AdminPanel() {
               )}
             </div>
           </div>
+
+          {scRoundId && scNoScores && (
+            <div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-2xl px-4 py-3 text-sm text-amber-700 dark:text-amber-400">
+              No hole-by-hole scores recorded for this round. Scores must be entered hole-by-hole to edit them here.
+            </div>
+          )}
 
           {scRoundId && scHoleScores.length > 0 && (
             <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm overflow-hidden">
@@ -513,14 +542,20 @@ export default function AdminPanel() {
               </div>
             </div>
           )}
-      {/* Teams tab */
+        </div>
+      )}
+
+      {/* Teams tab */}
       {tab === 'teams' && (
         <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm overflow-hidden">
           <div className="px-4 py-3 bg-gray-50 dark:bg-gray-800 font-semibold text-sm text-gray-700 dark:text-gray-300">Team Names</div>
           <div className="divide-y divide-gray-100 dark:divide-gray-800">
             {teams.map((team) => (
               <div key={team.id} className="flex items-center justify-between px-4 py-3">
-                <span className="text-sm text-gray-900 dark:text-white">{team.name}</span>
+                <div>
+                  <span className="text-sm text-gray-900 dark:text-white">{team.name}</span>
+                  <span className="ml-2 text-xs text-gray-400">{team.league_id_night}</span>
+                </div>
                 <button
                   onClick={() => deleteTeam(team.id, team.name)}
                   className="p-1.5 rounded-full text-red-400 hover:bg-red-50 dark:hover:bg-red-950"
@@ -532,6 +567,15 @@ export default function AdminPanel() {
             ))}
           </div>
           <div className="px-4 py-3 border-t border-gray-100 dark:border-gray-800 space-y-2">
+            <select
+              value={newTeamLeague}
+              onChange={(e) => setNewTeamLeague(e.target.value)}
+              className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+            >
+              {LEAGUE_OPTIONS.map((l) => (
+                <option key={l} value={l}>{l}</option>
+              ))}
+            </select>
             <div className="flex gap-2">
               <input
                 type="text"
