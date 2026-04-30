@@ -227,6 +227,7 @@ create policy "Users can join leagues"
 create table public.teams (
   id uuid primary key default uuid_generate_v4(),
   name text not null unique,
+  league_id_night text not null default 'PGC.Thursday',
   created_at timestamptz not null default now()
 );
 
@@ -239,7 +240,7 @@ create policy "Commissioners can manage teams"
   on public.teams for all
   using (exists (select 1 from public.profiles where id = auth.uid() and role in ('commissioner', 'admin')));
 
-insert into public.teams (name) values ('Wisconsin Knights'), ('Test');
+insert into public.teams (name, league_id_night) values ('Wisconsin Knights', 'PGC.Thursday'), ('Test', 'PGC.Thursday');
 
 -- =============================================
 -- INDEXES for performance

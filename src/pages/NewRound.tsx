@@ -11,8 +11,6 @@ import { PATRIOT_GOLF_CLUB } from '../lib/patriot-course'
 const DEFAULT_PARS = PATRIOT_GOLF_CLUB.hole_pars
 
 const LEAGUE_ID_NIGHT_OPTIONS = ['PGC.Thursday', 'PGC.Test'] as const
-const TEAM_NAME_OPTIONS = ['Wisconsin Knights', 'Test'] as const
-
 export default function NewRound() {
   const { user } = useAuth()
   const navigate = useNavigate()
@@ -42,11 +40,17 @@ export default function NewRound() {
 
   useEffect(() => {
     loadCourses()
+    loadTeams()
   }, [])
 
   async function loadCourses() {
     const { data } = await supabase.from('courses').select('*').order('name')
     if (data) setCourses(data as Course[])
+  }
+
+  async function loadTeams() {
+    const { data } = await supabase.from('teams').select('name').order('name')
+    if (data) setTeamOptions(data.map((t: { name: string }) => t.name))
   }
 
   async function detectLocation() {
