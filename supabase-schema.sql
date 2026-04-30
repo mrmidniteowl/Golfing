@@ -175,6 +175,24 @@ create policy "Users can update hole scores for own rounds"
     )
   );
 
+create policy "Commissioners can insert hole scores for any round"
+  on public.hole_scores for insert
+  with check (
+    exists (
+      select 1 from public.profiles
+      where id = auth.uid() and role in ('commissioner', 'admin')
+    )
+  );
+
+create policy "Commissioners can update hole scores for any round"
+  on public.hole_scores for update
+  using (
+    exists (
+      select 1 from public.profiles
+      where id = auth.uid() and role in ('commissioner', 'admin')
+    )
+  );
+
 -- =============================================
 -- LEAGUES
 -- =============================================
