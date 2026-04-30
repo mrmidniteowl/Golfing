@@ -27,6 +27,7 @@ export default function NewRound() {
   const [putts, setPutts] = useState<(number | null)[]>(Array(18).fill(null))
   const [fairways, setFairways] = useState<(boolean | null)[]>(Array(18).fill(null))
   const [girs, setGirs] = useState<(boolean | null)[]>(Array(18).fill(null))
+  const [penalties, setPenalties] = useState<number[]>(Array(18).fill(0))
   const [notes, setNotes] = useState('')
   const [saving, setSaving] = useState(false)
   const [showAddCourse, setShowAddCourse] = useState(false)
@@ -37,6 +38,7 @@ export default function NewRound() {
   const [teamName, setTeamName] = useState<string>('')
   const [holeCount, setHoleCount] = useState<HoleCount>(18)
   const [nineSide, setNineSide] = useState<NineSide | ''>('')
+  const [teamOptions, setTeamOptions] = useState<string[]>([])
 
   useEffect(() => {
     loadCourses()
@@ -177,6 +179,7 @@ export default function NewRound() {
       putts: putts[i],
       fairway_hit: fairways[i],
       gir: girs[i],
+      penalty_strokes: penalties[i],
     })).filter((h, i) => h.strokes > 0 && i >= start && i < end)
 
     if (holeScores.length > 0) {
@@ -371,7 +374,7 @@ export default function NewRound() {
                 className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
               >
                 <option value="">Select...</option>
-                {TEAM_NAME_OPTIONS.map((v) => (
+                {teamOptions.map((v) => (
                   <option key={v} value={v}>{v}</option>
                 ))}
               </select>
@@ -446,7 +449,9 @@ export default function NewRound() {
   const [holeStart, holeEnd] = getHoleRange()
   const showFront = holeStart === 0
   const showBack = holeEnd === 18
-  const playedScoresHaveValue = scores.slice(holeStart, holeEnd).some((s) => s > 0)
+  const playedHoles = scores.slice(holeStart, holeEnd)
+  const allHolesScored = playedHoles.every((s) => s > 0)
+  const unscoredCount = playedHoles.filter((s) => s === 0).length
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 space-y-4">
       <div className="flex items-center justify-between">
@@ -469,10 +474,12 @@ export default function NewRound() {
           putts={putts}
           fairways={fairways}
           girs={girs}
+          penalties={penalties}
           onScoreChange={updateScore}
           onPuttsChange={updatePutts}
           onFairwayChange={(h, v) => setFairways((p) => { const n = [...p]; n[h] = v; return n })}
           onGirChange={(h, v) => setGirs((p) => { const n = [...p]; n[h] = v; return n })}
+          onPenaltyChange={(h, v) => setPenalties((p) => { const n = [...p]; n[h] = v; return n })}
         />
       )}
 
@@ -486,10 +493,12 @@ export default function NewRound() {
           putts={putts}
           fairways={fairways}
           girs={girs}
+          penalties={penalties}
           onScoreChange={updateScore}
           onPuttsChange={updatePutts}
           onFairwayChange={(h, v) => setFairways((p) => { const n = [...p]; n[h] = v; return n })}
           onGirChange={(h, v) => setGirs((p) => { const n = [...p]; n[h] = v; return n })}
+          onPenaltyChange={(h, v) => setPenalties((p) => { const n = [...p]; n[h] = v; return n })}
         />
       )}
 
@@ -510,9 +519,14 @@ export default function NewRound() {
         className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm"
       />
 
+      {!allHolesScored && unscoredCount > 0 && (
+        <p className="text-center text-sm text-amber-600 dark:text-amber-400">
+          {unscoredCount} hole{unscoredCount !== 1 ? 's' : ''} still need{unscoredCount === 1 ? 's' : ''} a score
+        </p>
+      )}
       <button
         onClick={saveRound}
-        disabled={saving || !playedScoresHaveValue}
+        disabled={saving || !allHolesScored}
         className="w-full bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white font-bold py-3 rounded-xl transition"
       >
         {saving ? 'Saving...' : 'Save Round'}
@@ -530,13 +544,15 @@ interface ScoreSectionProps {
   putts: (number | null)[]
   fairways: (boolean | null)[]
   girs: (boolean | null)[]
+  penalties: number[]
   onScoreChange: (hole: number, value: number) => void
   onPuttsChange: (hole: number, value: number | null) => void
   onFairwayChange: (hole: number, value: boolean | null) => void
   onGirChange: (hole: number, value: boolean | null) => void
+  onPenaltyChange: (hole: number, value: number) => void
 }
 
-function ScoreSection({ title, holeStart, holeEnd, holePars, scores, putts, fairways, girs, onScoreChange, onPuttsChange, onFairwayChange, onGirChange }: ScoreSectionProps) {
+function ScoreSection({ title, holeStart, holeEnd, holePars, scores, putts, fairways, girs, penalties, onScoreChange, onPuttsChange, onFairwayChange, onGirChange, onPenaltyChange }: ScoreSectionProps) {
   const [expanded, setExpanded] = useState<number | null>(null)
 
   const sectionTotal = scores.slice(holeStart, holeEnd).reduce((a, b) => a + b, 0)
@@ -568,7 +584,7 @@ function ScoreSection({ title, holeStart, holeEnd, holePars, scores, putts, fair
           return (
             <div key={hole}>
               <div
-                className="flex items-center px-4 py-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800"
+                className={`flex items-center px-4 py-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 ${score === 0 ? 'border-l-2 border-amber-400' : ''}`}
                 onClick={() => setExpanded(isExpanded ? null : hole)}
               >
                 <span className="w-12 text-sm font-medium text-gray-500">#{hole + 1}</span>
@@ -621,6 +637,20 @@ function ScoreSection({ title, holeStart, holeEnd, holePars, scores, putts, fair
                   >
                     Fairway Hit
                   </button>
+                  <div className="flex items-center gap-2">
+                    <label className="text-xs text-gray-500">Penalty:</label>
+                    <div className="flex gap-1">
+                      {[0, 1, 2, 3].map((v) => (
+                        <button
+                          key={v}
+                          onClick={() => onPenaltyChange(hole, v)}
+                          className={`w-7 h-7 rounded-full text-xs ${penalties[hole] === v ? 'bg-red-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300'}`}
+                        >
+                          {v}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                   <button
                     onClick={() => onGirChange(hole, girs[hole] === true ? null : true)}
                     className={`px-3 py-1 rounded-full text-xs font-medium ${

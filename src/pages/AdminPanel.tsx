@@ -11,7 +11,7 @@ export default function AdminPanel() {
   const [rounds, setRounds] = useState<Round[]>([])
   const [_courses, setCourses] = useState<Course[]>([])
   const [loading, setLoading] = useState(true)
-  const [tab, setTab] = useState<'players' | 'rounds' | 'scorecards' | 'reports'>('players')
+  const [tab, setTab] = useState<'players' | 'rounds' | 'scorecards' | 'teams' | 'reports'>('players')
   const [editingScore, setEditingScore] = useState<{ id: string; score: number } | null>(null)
   const [editingName, setEditingName] = useState<{ id: string; value: string } | null>(null)
   const [pwModalUser, setPwModalUser] = useState<Profile | null>(null)
@@ -32,6 +32,10 @@ export default function AdminPanel() {
   const [scHoleScores, setScHoleScores] = useState<{ id: string; hole_number: number; strokes: number; putts: number | null; fairway_hit: boolean | null; gir: boolean | null }[]>([])
   const [scEdits, setScEdits] = useState<Record<number, number>>({})
   const [scSaving, setScSaving] = useState(false)
+  const [teams, setTeams] = useState<{ id: string; name: string }[]>([])
+  const [newTeamName, setNewTeamName] = useState('')
+  const [teamError, setTeamError] = useState<string | null>(null)
+  const [teamSaving, setTeamSaving] = useState(false)
 
   const isAdmin = currentProfile?.role === 'commissioner' || currentProfile?.role === 'admin'
 
@@ -41,15 +45,35 @@ export default function AdminPanel() {
   }, [isAdmin])
 
   async function loadData() {
-    const [p, r, c] = await Promise.all([
+    const [p, r, c, t] = await Promise.all([
       supabase.from('profiles').select('*').order('full_name'),
       supabase.from('rounds').select('*, course:courses(*), profile:profiles(*)').order('date', { ascending: false }),
       supabase.from('courses').select('*').order('name'),
+      supabase.from('teams').select('*').order('name'),
     ])
     if (p.data) setPlayers(p.data as Profile[])
     if (r.data) setRounds(r.data as Round[])
     if (c.data) setCourses(c.data as Course[])
+    if (t.data) setTeams(t.data as { id: string; name: string }[])
     setLoading(false)
+  }
+
+  async function addTeam() {
+    const name = newTeamName.trim()
+    if (!name) return
+    setTeamError(null)
+    setTeamSaving(true)
+    const { data, error } = await supabase.from('teams').insert({ name }).select().single()
+    setTeamSaving(false)
+    if (error) { setTeamError(error.message); return }
+    setTeams((prev) => [...prev, data as { id: string; name: string }].sort((a, b) => a.name.localeCompare(b.name)))
+    setNewTeamName('')
+  }
+
+  async function deleteTeam(id: string, name: string) {
+    if (!confirm(`Delete team "${name}"?`)) return
+    await supabase.from('teams').delete().eq('id', id)
+    setTeams((prev) => prev.filter((t) => t.id !== id))
   }
 
   async function toggleLock(roundId: string, currentLock: boolean) {
@@ -257,7 +281,7 @@ export default function AdminPanel() {
 
       {/* Tabs */}
       <div className="flex gap-2">
-        {(['players', 'rounds', 'scorecards', 'reports'] as const).map((t) => (
+        {(['players', 'rounds', 'scorecards', 'teams', 'reports'] as const).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -489,6 +513,44 @@ export default function AdminPanel() {
               </div>
             </div>
           )}
+      {/* Teams tab */
+      {tab === 'teams' && (
+        <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm overflow-hidden">
+          <div className="px-4 py-3 bg-gray-50 dark:bg-gray-800 font-semibold text-sm text-gray-700 dark:text-gray-300">Team Names</div>
+          <div className="divide-y divide-gray-100 dark:divide-gray-800">
+            {teams.map((team) => (
+              <div key={team.id} className="flex items-center justify-between px-4 py-3">
+                <span className="text-sm text-gray-900 dark:text-white">{team.name}</span>
+                <button
+                  onClick={() => deleteTeam(team.id, team.name)}
+                  className="p-1.5 rounded-full text-red-400 hover:bg-red-50 dark:hover:bg-red-950"
+                  title="Delete team"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            ))}
+          </div>
+          <div className="px-4 py-3 border-t border-gray-100 dark:border-gray-800 space-y-2">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="New team name"
+                value={newTeamName}
+                onChange={(e) => setNewTeamName(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && addTeam()}
+                className="flex-1 px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+              />
+              <button
+                onClick={addTeam}
+                disabled={teamSaving || !newTeamName.trim()}
+                className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg"
+              >
+                {teamSaving ? 'Adding...' : 'Add'}
+              </button>
+            </div>
+            {teamError && <p className="text-sm text-red-600 dark:text-red-400">{teamError}</p>}
+          </div>
         </div>
       )}
 

@@ -146,6 +146,7 @@ create table public.hole_scores (
   putts integer check (putts >= 0),
   fairway_hit boolean,
   gir boolean,
+  penalty_strokes integer not null default 0,
   unique (round_id, hole_number)
 );
 
@@ -219,6 +220,26 @@ create policy "League members are viewable by everyone"
 create policy "Users can join leagues"
   on public.league_members for insert
   with check (auth.uid() = user_id);
+
+-- =============================================
+-- TEAMS
+-- =============================================
+create table public.teams (
+  id uuid primary key default uuid_generate_v4(),
+  name text not null unique,
+  created_at timestamptz not null default now()
+);
+
+alter table public.teams enable row level security;
+
+create policy "Teams are viewable by everyone"
+  on public.teams for select using (true);
+
+create policy "Commissioners can manage teams"
+  on public.teams for all
+  using (exists (select 1 from public.profiles where id = auth.uid() and role in ('commissioner', 'admin')));
+
+insert into public.teams (name) values ('Wisconsin Knights'), ('Test');
 
 -- =============================================
 -- INDEXES for performance

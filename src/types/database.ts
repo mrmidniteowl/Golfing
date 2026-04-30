@@ -94,6 +94,7 @@ export interface HoleScore {
   putts: number | null
   fairway_hit: boolean | null
   gir: boolean | null
+  penalty_strokes: number
 }
 
 export interface League {
