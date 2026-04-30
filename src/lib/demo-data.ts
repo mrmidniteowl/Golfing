@@ -26,6 +26,7 @@ function demoRound(daysAgo: number, score: number, putts: number, fw: number, gi
     fairways_hit: fw,
     greens_in_regulation: gir,
     total_penalties: 0,
+    total_spirits: 0,
     notes: null,
     is_locked: false,
     play_mode: 'non_league',

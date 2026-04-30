@@ -75,6 +75,7 @@ create table public.rounds (
   fairways_hit integer,
   greens_in_regulation integer,
   total_penalties integer not null default 0,
+  total_spirits integer not null default 0,
   notes text,
   is_locked boolean not null default false,
   play_mode text not null default 'non_league' check (play_mode in ('league', 'non_league')),
