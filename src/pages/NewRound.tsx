@@ -637,6 +637,17 @@ function ScoreSection({ title, holeStart, holeEnd, holePars, scores, putts, fair
                   >
                     Fairway Hit
                   </button>
+                  <button
+                    onClick={() => onGirChange(hole, girs[hole] === true ? null : true)}
+                    className={`px-3 py-1 rounded-full text-xs font-medium ${
+                      girs[hole] === true
+                        ? 'bg-green-600 text-white'
+                        : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
+                    }`}
+                  >
+                    Green in Regulation
+                  </button>
+
                   <div className="flex items-center gap-2">
                     <label className="text-xs text-gray-500">Penalty:</label>
                     <div className="flex gap-1">
@@ -651,16 +662,6 @@ function ScoreSection({ title, holeStart, holeEnd, holePars, scores, putts, fair
                       ))}
                     </div>
                   </div>
-                  <button
-                    onClick={() => onGirChange(hole, girs[hole] === true ? null : true)}
-                    className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      girs[hole] === true
-                        ? 'bg-green-600 text-white'
-                        : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
-                    }`}
-                  >
-                    Green in Regulation
-                  </button>
                 </div>
               )}
             </div>
