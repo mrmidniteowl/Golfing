@@ -26,6 +26,7 @@ export default function NewRound() {
   const [fairways, setFairways] = useState<(boolean | null)[]>(Array(18).fill(null))
   const [girs, setGirs] = useState<(boolean | null)[]>(Array(18).fill(null))
   const [penalties, setPenalties] = useState<number[]>(Array(18).fill(0))
+  const [spirits, setSpirits] = useState<boolean[]>(Array(18).fill(false))
   const [notes, setNotes] = useState('')
   const [saving, setSaving] = useState(false)
   const [showAddCourse, setShowAddCourse] = useState(false)
@@ -140,12 +141,14 @@ export default function NewRound() {
     const playedFairways = fairways.slice(start, end)
     const playedGirs = girs.slice(start, end)
     const playedPenalties = penalties.slice(start, end)
+    const playedSpirits = spirits.slice(start, end)
 
     const totalScore = playedScores.reduce((a, b) => a + b, 0)
     const totalPutts = playedPutts.some((p) => p !== null) ? playedPutts.reduce((a: number, p) => a + (p ?? 0), 0) : null
     const fwHit = playedFairways.some((f) => f !== null) ? playedFairways.filter((f) => f === true).length : null
     const girCount = playedGirs.some((g) => g !== null) ? playedGirs.filter((g) => g === true).length : null
     const totalPenalties = playedPenalties.reduce((a, b) => a + b, 0)
+    const totalSpirits = playedSpirits.filter(Boolean).length
 
     const roundData = {
       user_id: user.id,
@@ -156,6 +159,7 @@ export default function NewRound() {
       fairways_hit: fwHit,
       greens_in_regulation: girCount,
       total_penalties: totalPenalties,
+      total_spirits: totalSpirits,
       notes: notes || null,
       is_locked: false,
       play_mode: playMode,
@@ -483,11 +487,13 @@ export default function NewRound() {
           fairways={fairways}
           girs={girs}
           penalties={penalties}
+          spirits={spirits}
           onScoreChange={updateScore}
           onPuttsChange={updatePutts}
           onFairwayChange={(h, v) => setFairways((p) => { const n = [...p]; n[h] = v; return n })}
           onGirChange={(h, v) => setGirs((p) => { const n = [...p]; n[h] = v; return n })}
           onPenaltyChange={(h, v) => setPenalties((p) => { const n = [...p]; n[h] = v; return n })}
+          onSpiritChange={(h, v) => setSpirits((p) => { const n = [...p]; n[h] = v; return n })}
         />
       )}
 
@@ -502,11 +508,13 @@ export default function NewRound() {
           fairways={fairways}
           girs={girs}
           penalties={penalties}
+          spirits={spirits}
           onScoreChange={updateScore}
           onPuttsChange={updatePutts}
           onFairwayChange={(h, v) => setFairways((p) => { const n = [...p]; n[h] = v; return n })}
           onGirChange={(h, v) => setGirs((p) => { const n = [...p]; n[h] = v; return n })}
           onPenaltyChange={(h, v) => setPenalties((p) => { const n = [...p]; n[h] = v; return n })}
+          onSpiritChange={(h, v) => setSpirits((p) => { const n = [...p]; n[h] = v; return n })}
         />
       )}
 
@@ -553,14 +561,16 @@ interface ScoreSectionProps {
   fairways: (boolean | null)[]
   girs: (boolean | null)[]
   penalties: number[]
+  spirits: boolean[]
   onScoreChange: (hole: number, value: number) => void
   onPuttsChange: (hole: number, value: number | null) => void
   onFairwayChange: (hole: number, value: boolean | null) => void
   onGirChange: (hole: number, value: boolean | null) => void
   onPenaltyChange: (hole: number, value: number) => void
+  onSpiritChange: (hole: number, value: boolean) => void
 }
 
-function ScoreSection({ title, holeStart, holeEnd, holePars, scores, putts, fairways, girs, penalties, onScoreChange, onPuttsChange, onFairwayChange, onGirChange, onPenaltyChange }: ScoreSectionProps) {
+function ScoreSection({ title, holeStart, holeEnd, holePars, scores, putts, fairways, girs, penalties, spirits, onScoreChange, onPuttsChange, onFairwayChange, onGirChange, onPenaltyChange, onSpiritChange }: ScoreSectionProps) {
   const [expanded, setExpanded] = useState<number | null>(null)
 
   const sectionTotal = scores.slice(holeStart, holeEnd).reduce((a, b) => a + b, 0)
@@ -670,6 +680,16 @@ function ScoreSection({ title, holeStart, holeEnd, holePars, scores, putts, fair
                       ))}
                     </div>
                   </div>
+                  <button
+                    onClick={() => onSpiritChange(hole, !spirits[hole])}
+                    className={`px-3 py-1 rounded-full text-xs font-medium ${
+                      spirits[hole]
+                        ? 'bg-amber-500 text-white'
+                        : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
+                    }`}
+                  >
+                    Spirits
+                  </button>
                 </div>
               )}
             </div>
