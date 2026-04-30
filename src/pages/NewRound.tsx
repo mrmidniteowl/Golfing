@@ -190,7 +190,12 @@ export default function NewRound() {
     })).filter((h, i) => h.strokes > 0 && i >= start && i < end)
 
     if (holeScores.length > 0) {
-      await supabase.from('hole_scores').insert(holeScores)
+      const { error: hsError } = await supabase.from('hole_scores').insert(holeScores)
+      if (hsError) {
+        alert('Round saved but hole scores failed: ' + hsError.message)
+        setSaving(false)
+        return
+      }
     }
 
     setSaving(false)
