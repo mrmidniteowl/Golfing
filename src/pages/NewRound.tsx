@@ -183,9 +183,6 @@ export default function NewRound() {
       round_id: round.id,
       hole_number: i + 1,
       strokes,
-      putts: putts[i],
-      fairway_hit: fairways[i],
-      gir: girs[i],
     })).filter((h, i) => h.strokes > 0 && i >= start && i < end)
 
     if (holeScores.length > 0) {
