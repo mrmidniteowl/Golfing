@@ -186,7 +186,6 @@ export default function NewRound() {
       putts: putts[i],
       fairway_hit: fairways[i],
       gir: girs[i],
-      ...(penalties[i] > 0 ? { penalty_strokes: penalties[i] } : {}),
     })).filter((h, i) => h.strokes > 0 && i >= start && i < end)
 
     if (holeScores.length > 0) {
