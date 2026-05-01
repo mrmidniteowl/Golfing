@@ -557,7 +557,7 @@ export default function AdminPanel() {
                       max={15}
                       value={scEdits[h.hole_number] ?? (scNoScores ? '' : h.strokes)}
                       onChange={(e) => setScEdits((prev) => ({ ...prev, [h.hole_number]: Number(e.target.value) }))}
-                      className="w-20 px-2 py-1 text-sm border rounded-lg dark:bg-gray-800 dark:border-gray-700 dark:text-white"
+                      className="w-20 px-2 py-1 text-sm border rounded-lg bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white"
                       placeholder={scNoScores ? '0' : undefined}
                     />
                   </div>
