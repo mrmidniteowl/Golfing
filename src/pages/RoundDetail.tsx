@@ -106,7 +106,10 @@ export default function RoundDetail() {
           return `${diff >= 0 ? '+' : ''}${diff}`
         })()} />
         <SummaryCard label="Putts" value={round.total_putts?.toString() ?? '--'} />
+        <SummaryCard label="FW Hit" value={round.fairways_hit !== null ? `${round.fairways_hit}/${round.hole_count === 9 ? 7 : 14}` : '--'} />
         <SummaryCard label="GIR" value={round.greens_in_regulation !== null ? `${round.greens_in_regulation}/${round.hole_count}` : '--'} />
+        <SummaryCard label="Penalties" value={(round.total_penalties ?? 0).toString()} />
+        <SummaryCard label="Spirits" value={(round.total_spirits ?? 0).toString()} />
       </div>
 
       {/* Hole-by-hole */}
@@ -121,9 +124,8 @@ export default function RoundDetail() {
                 <th className="px-3 py-2 text-left">Hole</th>
                 <th className="px-3 py-2">Par</th>
                 <th className="px-3 py-2">Score</th>
-                <th className="px-3 py-2">Putts</th>
-                <th className="px-3 py-2">FW</th>
-                <th className="px-3 py-2">GIR</th>
+                <th className="px-3 py-2">+/-</th>
+                <th className="px-3 py-2">Penalty</th>
               </tr>
             </thead>
             <tbody>
@@ -140,9 +142,8 @@ export default function RoundDetail() {
                     <td className="px-3 py-2 text-gray-500">#{hs.hole_number}</td>
                     <td className="px-3 py-2 text-center text-gray-400">{par}</td>
                     <td className={`px-3 py-2 text-center ${color}`}>{hs.strokes}</td>
-                    <td className="px-3 py-2 text-center text-gray-500">{hs.putts ?? '-'}</td>
-                    <td className="px-3 py-2 text-center">{hs.fairway_hit === true ? '✓' : hs.fairway_hit === false ? '✗' : '-'}</td>
-                    <td className="px-3 py-2 text-center">{hs.gir === true ? '✓' : hs.gir === false ? '✗' : '-'}</td>
+                    <td className={`px-3 py-2 text-center ${color}`}>{diff >= 0 ? '+' : ''}{diff}</td>
+                    <td className="px-3 py-2 text-center text-gray-500">{hs.penalty_strokes ? hs.penalty_strokes : '-'}</td>
                   </tr>
                 )
               })}
