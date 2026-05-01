@@ -6,7 +6,7 @@ export const PATRIOT_GOLF_CLUB = {
   city: 'Abrams',
   state: 'WI',
   par: 72,
-  hole_pars: [4, 3, 4, 4, 4, 4, 3, 5, 4, 4, 4, 3, 4, 5, 5, 4, 4, 4],
+  hole_pars: [4, 3, 4, 4, 5, 4, 3, 5, 4, 4, 4, 3, 4, 5, 5, 3, 4, 4],
   hole_handicaps_men: [13, 11, 3, 9, 5, 1, 17, 7, 15, 18, 10, 6, 8, 16, 2, 12, 14, 4],
   hole_handicaps_women: [13, 11, 3, 9, 5, 1, 17, 7, 15, 18, 10, 6, 8, 16, 2, 12, 14, 4],
   tees: {
@@ -39,6 +39,6 @@ export const PATRIOT_GOLF_CLUB = {
       slope: 126,
     },
   },
-  front9par: 35,
-  back9par: 37,
+  front9par: 36,
+  back9par: 36,
 }
