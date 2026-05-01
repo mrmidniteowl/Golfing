@@ -104,10 +104,10 @@ export default function ProfilePage() {
     ? Math.round(fwRounds.reduce((s, r) => s + (r.hole_count === 9 ? 7 : 14), 0) / fwRounds.length)
     : 14
   const avgPenalties = filteredRounds.length > 0
-    ? Math.round(filteredRounds.reduce((s, r) => s + r.total_penalties, 0) / filteredRounds.length * 10) / 10
+    ? Math.round(filteredRounds.reduce((s, r) => s + (r.total_penalties ?? 0), 0) / filteredRounds.length * 10) / 10
     : null
   const avgSpirits = filteredRounds.length > 0
-    ? Math.round(filteredRounds.reduce((s, r) => s + r.total_spirits, 0) / filteredRounds.length * 10) / 10
+    ? Math.round(filteredRounds.reduce((s, r) => s + (r.total_spirits ?? 0), 0) / filteredRounds.length * 10) / 10
     : null
 
   // Score distribution for chart (par-relative uses the course par; works across hole counts because we compare to course par either way)

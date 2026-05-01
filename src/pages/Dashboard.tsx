@@ -60,10 +60,10 @@ export default function Dashboard() {
   const bestScore = filteredRounds.length > 0 ? Math.min(...filteredRounds.map((r) => r.total_score)) : null
   const totalRounds = filteredRounds.length
   const avgPenalties = filteredRounds.length > 0
-    ? Math.round(filteredRounds.reduce((s, r) => s + r.total_penalties, 0) / filteredRounds.length * 10) / 10
+    ? Math.round(filteredRounds.reduce((s, r) => s + (r.total_penalties ?? 0), 0) / filteredRounds.length * 10) / 10
     : null
   const avgSpirits = filteredRounds.length > 0
-    ? Math.round(filteredRounds.reduce((s, r) => s + r.total_spirits, 0) / filteredRounds.length * 10) / 10
+    ? Math.round(filteredRounds.reduce((s, r) => s + (r.total_spirits ?? 0), 0) / filteredRounds.length * 10) / 10
     : null
 
   const chartData = [...filteredRounds]
