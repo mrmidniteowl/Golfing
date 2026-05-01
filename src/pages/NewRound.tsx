@@ -37,7 +37,7 @@ export default function NewRound() {
   const [teamName, setTeamName] = useState<string>('')
   const [holeCount, setHoleCount] = useState<HoleCount>(18)
   const [nineSide, setNineSide] = useState<NineSide | ''>('')
-  const [teamOptions, setTeamOptions] = useState<string[]>([])
+  const [teamOptions, setTeamOptions] = useState<{ name: string; league_id_night: string }[]>([])
 
   useEffect(() => {
     loadCourses()
@@ -50,8 +50,8 @@ export default function NewRound() {
   }
 
   async function loadTeams() {
-    const { data } = await supabase.from('teams').select('name').order('name')
-    if (data) setTeamOptions(data.map((t: { name: string }) => t.name))
+    const { data } = await supabase.from('teams').select('name, league_id_night').order('name')
+    if (data) setTeamOptions(data as { name: string; league_id_night: string }[])
   }
 
   async function detectLocation() {
@@ -386,9 +386,11 @@ export default function NewRound() {
                 className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
               >
                 <option value="">Select...</option>
-                {teamOptions.map((v) => (
-                  <option key={v} value={v}>{v}</option>
-                ))}
+                {teamOptions
+                  .filter((t) => t.league_id_night === leagueIdNight)
+                  .map((t) => (
+                    <option key={t.name} value={t.name}>{t.name}</option>
+                  ))}
               </select>
             </div>
 
