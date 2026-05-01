@@ -34,6 +34,7 @@ export default function AdminPanel() {
   const [scNoScores, setScNoScores] = useState(false)
   const [scEdits, setScEdits] = useState<Record<number, number>>({})
   const [scSaving, setScSaving] = useState(false)
+  const [scLoading, setScLoading] = useState(false)
   const [teams, setTeams] = useState<{ id: string; name: string; league_id_night: string }[]>([])
   const [newTeamName, setNewTeamName] = useState('')
   const [newTeamLeague, setNewTeamLeague] = useState('PGC.Thursday')
@@ -103,11 +104,14 @@ export default function AdminPanel() {
     setScRoundId(roundId)
     setScEdits({})
     setScNoScores(false)
+    setScHoleScores([])
+    setScLoading(true)
     const { data } = await supabase
       .from('hole_scores')
       .select('*')
       .eq('round_id', roundId)
       .order('hole_number')
+    setScLoading(false)
     const existing = (data ?? []) as typeof scHoleScores
     if (existing.length > 0) {
       setScHoleScores(existing)
@@ -531,33 +535,37 @@ export default function AdminPanel() {
             </div>
           </div>
 
-          {scRoundId && scHoleScores.length > 0 && (
+          {scRoundId && scLoading && (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-green-600" />
+            </div>
+          )}
+
+          {scRoundId && !scLoading && scHoleScores.length > 0 && (
             <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm overflow-hidden">
               <div className="px-4 py-3 bg-gray-50 dark:bg-gray-800 font-semibold text-sm text-gray-700 dark:text-gray-300 flex items-center justify-between">
                 <span>Hole Scores</span>
-                {scNoScores && <span className="text-xs font-normal text-amber-600 dark:text-amber-400">No scores yet — enter below to create</span>}
+                {scNoScores && <span className="text-xs font-normal text-amber-600 dark:text-amber-400">No scores recorded — enter below to create</span>}
               </div>
               <div className="divide-y divide-gray-100 dark:divide-gray-800">
                 {scHoleScores.map((h) => (
-                  <div key={h.id} className="flex items-center px-4 py-2 gap-3">
+                  <div key={h.hole_number} className="flex items-center px-4 py-2 gap-3">
                     <span className="w-16 text-sm text-gray-500">Hole {h.hole_number}</span>
                     <input
                       type="number"
                       min={1}
                       max={15}
-                      value={scEdits[h.hole_number] ?? h.strokes}
+                      value={scEdits[h.hole_number] ?? (scNoScores ? '' : h.strokes)}
                       onChange={(e) => setScEdits((prev) => ({ ...prev, [h.hole_number]: Number(e.target.value) }))}
                       className="w-20 px-2 py-1 text-sm border rounded-lg dark:bg-gray-800 dark:border-gray-700 dark:text-white"
+                      placeholder={scNoScores ? '0' : undefined}
                     />
-                    <span className="text-xs text-gray-400">
-                      {h.putts !== null ? `${h.putts} putts` : ''}{h.fairway_hit ? ' · FW' : ''}{h.gir ? ' · GIR' : ''}
-                    </span>
                   </div>
                 ))}
               </div>
               <div className="px-4 py-3 border-t border-gray-100 dark:border-gray-800 flex justify-between items-center">
                 <span className="text-sm text-gray-500">
-                  Total: {scHoleScores.map((h) => scEdits[h.hole_number] ?? h.strokes).reduce((a, b) => a + b, 0)}
+                  Total: {scHoleScores.map((h) => scEdits[h.hole_number] ?? (scNoScores ? 0 : h.strokes)).reduce((a, b) => a + b, 0)}
                   {Object.keys(scEdits).length > 0 && <span className="text-amber-500 ml-2">(unsaved changes)</span>}
                 </span>
                 <button
