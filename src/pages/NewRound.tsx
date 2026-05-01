@@ -159,7 +159,6 @@ export default function NewRound() {
       fairways_hit: fwHit,
       greens_in_regulation: girCount,
       total_penalties: totalPenalties,
-      total_spirits: totalSpirits,
       notes: notes || null,
       is_locked: false,
       play_mode: playMode,
@@ -181,6 +180,11 @@ export default function NewRound() {
       alert('Failed to save round: ' + (error?.message ?? 'Unknown error'))
       setSaving(false)
       return
+    }
+
+    // Save spirits via separate update to work around PostgREST schema cache lag
+    if (totalSpirits > 0) {
+      await supabase.from('rounds').update({ total_spirits: totalSpirits }).eq('id', round.id)
     }
 
     const holeScores = scores.map((strokes, i) => ({
