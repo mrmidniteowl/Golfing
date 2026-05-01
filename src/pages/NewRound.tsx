@@ -159,7 +159,6 @@ export default function NewRound() {
       fairways_hit: fwHit,
       greens_in_regulation: girCount,
       total_penalties: totalPenalties,
-      total_spirits: totalSpirits,
       notes: notes || null,
       is_locked: false,
       play_mode: playMode,
@@ -183,11 +182,15 @@ export default function NewRound() {
       return
     }
 
+    // Use RPC to bypass schema cache for total_spirits
+    if (totalSpirits > 0) {
+      await supabase.rpc('update_round_spirits', { p_round_id: round.id, p_spirits: totalSpirits })
+    }
+
     const holeScores = scores.map((strokes, i) => ({
       round_id: round.id,
       hole_number: i + 1,
       strokes,
-      penalty_strokes: penalties[i] ?? 0,
     })).filter((h, i) => h.strokes > 0 && i >= start && i < end)
 
     if (holeScores.length > 0) {
@@ -196,6 +199,13 @@ export default function NewRound() {
         alert('Round saved but hole scores failed: ' + hsError.message)
         setSaving(false)
         return
+      }
+      // Use RPC to bypass schema cache for penalty_strokes
+      const penaltyUpdates = holeScores
+        .map((h, idx) => ({ hole: h.hole_number, penalty: penalties[start + idx] ?? 0 }))
+        .filter((h) => h.penalty > 0)
+      for (const { hole, penalty } of penaltyUpdates) {
+        await supabase.rpc('update_hole_penalty', { p_round_id: round.id, p_hole: hole, p_penalty: penalty })
       }
     }
 
