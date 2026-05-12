@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { MapPin, Loader2, Search } from 'lucide-react'
 import { supabase } from '../lib/supabase'
@@ -9,6 +9,7 @@ import type { Course, PlayMode, NineSide, HoleCount } from '../types/database'
 import { PATRIOT_GOLF_CLUB } from '../lib/patriot-course'
 
 const DEFAULT_PARS = PATRIOT_GOLF_CLUB.hole_pars
+const DRAFT_KEY = 'golfing_round_draft'
 
 const LEAGUE_ID_NIGHT_OPTIONS = ['PGC.Thursday', 'PGC.Test'] as const
 export default function NewRound() {
@@ -38,6 +39,45 @@ export default function NewRound() {
   const [holeCount, setHoleCount] = useState<HoleCount>(18)
   const [nineSide, setNineSide] = useState<NineSide | ''>('')
   const [teamOptions, setTeamOptions] = useState<{ name: string; league_id_night: string }[]>([])
+  const [draftRestored, setDraftRestored] = useState(false)
+  const saveEffectMounted = useRef(false)
+
+  // Restore draft on mount
+  useEffect(() => {
+    const saved = localStorage.getItem(DRAFT_KEY)
+    if (saved) {
+      try {
+        const d = JSON.parse(saved)
+        if (d.step) setStep(d.step)
+        if (d.selectedCourse) setSelectedCourse(d.selectedCourse)
+        if (d.date) setDate(d.date)
+        if (d.scores) setScores(d.scores)
+        if (d.putts) setPutts(d.putts)
+        if (d.fairways) setFairways(d.fairways)
+        if (d.girs) setGirs(d.girs)
+        if (d.penalties) setPenalties(d.penalties)
+        if (d.spirits) setSpirits(d.spirits)
+        if (d.notes !== undefined) setNotes(d.notes)
+        if (d.playMode) setPlayMode(d.playMode)
+        if (d.leagueIdNight !== undefined) setLeagueIdNight(d.leagueIdNight)
+        if (d.teamName !== undefined) setTeamName(d.teamName)
+        if (d.holeCount) setHoleCount(d.holeCount)
+        if (d.nineSide !== undefined) setNineSide(d.nineSide)
+        setDraftRestored(true)
+      } catch {
+        localStorage.removeItem(DRAFT_KEY)
+      }
+    }
+  }, [])
+
+  // Save draft on every relevant change (skip the initial mount run)
+  useEffect(() => {
+    if (!saveEffectMounted.current) { saveEffectMounted.current = true; return }
+    localStorage.setItem(DRAFT_KEY, JSON.stringify({
+      step, selectedCourse, date, scores, putts, fairways, girs,
+      penalties, spirits, notes, playMode, leagueIdNight, teamName, holeCount, nineSide,
+    }))
+  }, [step, selectedCourse, date, scores, putts, fairways, girs, penalties, spirits, notes, playMode, leagueIdNight, teamName, holeCount, nineSide])
 
   useEffect(() => {
     loadCourses()
@@ -131,6 +171,26 @@ export default function NewRound() {
     return true
   }
 
+  function clearDraft() {
+    localStorage.removeItem(DRAFT_KEY)
+    setDraftRestored(false)
+    setStep('course')
+    setSelectedCourse(null)
+    setDate(new Date().toISOString().split('T')[0])
+    setScores(Array(18).fill(0))
+    setPutts(Array(18).fill(null))
+    setFairways(Array(18).fill(null))
+    setGirs(Array(18).fill(null))
+    setPenalties(Array(18).fill(0))
+    setSpirits(Array(18).fill(false))
+    setNotes('')
+    setPlayMode('non_league')
+    setLeagueIdNight('')
+    setTeamName('')
+    setHoleCount(18)
+    setNineSide('')
+  }
+
   async function saveRound() {
     if (!user || !selectedCourse) return
     setSaving(true)
@@ -170,6 +230,7 @@ export default function NewRound() {
 
     if (!isOnline()) {
       queueOfflineAction({ type: 'insert_round', table: 'rounds', data: { ...roundData, scores, putts, fairways, girs } })
+      localStorage.removeItem(DRAFT_KEY)
       navigate('/')
       setSaving(false)
       return
@@ -209,6 +270,7 @@ export default function NewRound() {
       }
     }
 
+    localStorage.removeItem(DRAFT_KEY)
     setSaving(false)
     navigate('/')
   }
@@ -223,6 +285,12 @@ export default function NewRound() {
     return (
       <div className="max-w-2xl mx-auto px-4 py-6 space-y-4">
         <h2 className="text-xl font-bold text-gray-900 dark:text-white">New Round</h2>
+        {draftRestored && (
+          <div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-xl px-4 py-2 flex items-center justify-between">
+            <span className="text-sm text-amber-700 dark:text-amber-400">Draft restored — pick up where you left off</span>
+            <button onClick={clearDraft} className="text-xs font-medium text-amber-600 dark:text-amber-400 underline">Start Over</button>
+          </div>
+        )}
 
         {/* Date */}
         <div>
@@ -340,6 +408,12 @@ export default function NewRound() {
   if (step === 'setup') {
     return (
       <div className="max-w-2xl mx-auto px-4 py-6 space-y-4">
+        {draftRestored && (
+          <div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-xl px-4 py-2 flex items-center justify-between">
+            <span className="text-sm text-amber-700 dark:text-amber-400">Draft restored — pick up where you left off</span>
+            <button onClick={clearDraft} className="text-xs font-medium text-amber-600 dark:text-amber-400 underline">Start Over</button>
+          </div>
+        )}
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-xl font-bold text-gray-900 dark:text-white">{selectedCourse?.name}</h2>
@@ -479,6 +553,12 @@ export default function NewRound() {
   const unscoredCount = playedHoles.filter((s) => s === 0).length
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 space-y-4">
+      {draftRestored && (
+        <div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-xl px-4 py-2 flex items-center justify-between">
+          <span className="text-sm text-amber-700 dark:text-amber-400">Draft restored — pick up where you left off</span>
+          <button onClick={clearDraft} className="text-xs font-medium text-amber-600 dark:text-amber-400 underline">Start Over</button>
+        </div>
+      )}
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-bold text-gray-900 dark:text-white">{selectedCourse?.name}</h2>
