@@ -134,6 +134,7 @@ export default function NewRound() {
     const existing = courses.find((c) => c.name.toLowerCase() === place.name.toLowerCase())
     if (existing) {
       setSelectedCourse(existing)
+      if (existing.nine_hole_only) { setHoleCount(9); setNineSide('front') }
     } else {
       setNewCourseName(place.name)
       setShowAddCourse(true)
@@ -167,6 +168,7 @@ export default function NewRound() {
       return leagueIdNight !== '' && teamName !== '' && nineSide !== ''
     }
     // non-league
+    if (selectedCourse?.nine_hole_only) return true
     if (holeCount === 9) return nineSide !== ''
     return true
   }
@@ -345,7 +347,10 @@ export default function NewRound() {
           {filteredCourses.map((course) => (
             <button
               key={course.id}
-              onClick={() => setSelectedCourse(course)}
+              onClick={() => {
+                setSelectedCourse(course)
+                if (course.nine_hole_only) { setHoleCount(9); setNineSide('front') }
+              }}
               className={`w-full text-left px-4 py-3 rounded-xl transition text-sm ${
                 selectedCourse?.id === course.id
                   ? 'bg-green-600 text-white'
@@ -500,35 +505,43 @@ export default function NewRound() {
 
         {playMode === 'non_league' && (
           <>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Holes</label>
-              <select
-                value={holeCount}
-                onChange={(e) => {
-                  const hc = Number(e.target.value) as HoleCount
-                  setHoleCount(hc)
-                  if (hc === 18) setNineSide('')
-                }}
-                className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-              >
-                <option value={18}>18 Holes</option>
-                <option value={9}>9 Holes</option>
-              </select>
-            </div>
-
-            {holeCount === 9 && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nine</label>
-                <select
-                  value={nineSide}
-                  onChange={(e) => setNineSide(e.target.value as NineSide | '')}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                >
-                  <option value="">Select...</option>
-                  <option value="front">Front (Holes 1-9)</option>
-                  <option value="back">Back (Holes 10-18)</option>
-                </select>
+            {selectedCourse?.nine_hole_only ? (
+              <div className="bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-900 rounded-xl px-4 py-3 text-sm text-green-800 dark:text-green-300">
+                9 Holes (this is a 9-hole course)
               </div>
+            ) : (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Holes</label>
+                  <select
+                    value={holeCount}
+                    onChange={(e) => {
+                      const hc = Number(e.target.value) as HoleCount
+                      setHoleCount(hc)
+                      if (hc === 18) setNineSide('')
+                    }}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                  >
+                    <option value={18}>18 Holes</option>
+                    <option value={9}>9 Holes</option>
+                  </select>
+                </div>
+
+                {holeCount === 9 && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nine</label>
+                    <select
+                      value={nineSide}
+                      onChange={(e) => setNineSide(e.target.value as NineSide | '')}
+                      className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                    >
+                      <option value="">Select...</option>
+                      <option value="front">Front (Holes 1-9)</option>
+                      <option value="back">Back (Holes 10-18)</option>
+                    </select>
+                  </div>
+                )}
+              </>
             )}
           </>
         )}

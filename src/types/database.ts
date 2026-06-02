@@ -53,7 +53,8 @@ export interface Course {
   city: string | null
   state: string | null
   par: number
-  hole_pars: number[] // array of 18 pars
+  hole_pars: number[] // array of 9 or 18 pars
+  nine_hole_only: boolean
   lat: number | null
   lng: number | null
   created_at: string
