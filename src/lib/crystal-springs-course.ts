@@ -1,9 +1,9 @@
-// Course data: Crystal Springs Golf Club, WI
+// Course data: Crystal Springs Golf Club, Seymour, WI
 // White tees: Par 72, 6163 yards, Rating 69.2, Slope 120
 
 export const CRYSTAL_SPRINGS_GOLF_CLUB = {
   name: 'Crystal Springs Golf Club',
-  city: null,
+  city: 'Seymour',
   state: 'WI',
   par: 72,
   hole_pars: [5, 4, 4, 4, 3, 4, 4, 3, 5, 5, 3, 4, 4, 4, 4, 4, 3, 5],
