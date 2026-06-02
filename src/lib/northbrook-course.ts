@@ -1,8 +1,8 @@
-// Course data: Northbrook Golf & Grill, Luxemburg, WI
+// Course data: Northbrook Golf Course, Luxemburg, WI
 // Blue tees: Par 71, 6280 yards, Rating 70.1, Slope 126
 
-export const NORTHBROOK_GOLF_GRILL = {
-  name: 'Northbrook Golf & Grill',
+export const NORTHBROOK_GOLF_COURSE = {
+  name: 'Northbrook Golf Course',
   city: 'Luxemburg',
   state: 'WI',
   par: 71,
