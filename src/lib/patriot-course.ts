@@ -2,7 +2,7 @@
 // Source: https://course.bluegolf.com/bluegolf/course/course/patriotgcwisco/detailedscorecard.htm
 
 export const PATRIOT_GOLF_CLUB = {
-  name: 'Patriot Golf Club',
+  name: '1. Patriot Golf Club',
   city: 'Abrams',
   state: 'WI',
   par: 72,
