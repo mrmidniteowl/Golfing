@@ -1,9 +1,9 @@
-// Course data: Mid Valle Golf Course - Red (Red Nine), WI
+// Course data: Mid Valle Golf Course - Red (Red Nine), De Pere, WI
 // White tees: Par 35, 2832 yards
 
 export const MID_VALLE_RED = {
   name: 'Mid Valle Golf Course - Red',
-  city: null,
+  city: 'De Pere',
   state: 'WI',
   par: 35,
   nine_hole_only: true,
