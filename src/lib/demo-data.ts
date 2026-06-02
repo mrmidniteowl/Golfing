@@ -8,6 +8,7 @@ const DEMO_COURSE: Course = {
   state: PATRIOT_GOLF_CLUB.state,
   par: PATRIOT_GOLF_CLUB.par,
   hole_pars: PATRIOT_GOLF_CLUB.hole_pars,
+  nine_hole_only: false,
   lat: 44.7833,
   lng: -88.0667,
   created_at: new Date().toISOString(),
