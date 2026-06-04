@@ -1,8 +1,8 @@
 const CACHE_NAME = 'golfing-with-the-boyz-v1'
 const STATIC_ASSETS = [
-  '/',
-  '/index.html',
-  '/manifest.json',
+  '/Golfing/',
+  '/Golfing/index.html',
+  '/Golfing/manifest.json',
 ]
 
 // Install - cache static assets
